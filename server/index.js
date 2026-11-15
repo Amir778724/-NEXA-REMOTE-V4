@@ -14,8 +14,12 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     return res.end(JSON.stringify({ ok: true, service: "nexa-relay" }));
   }
-  res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
-  res.end("NEXA Remote relay is running. Open /viewer for the web viewer.\n");
+  if (req.url === "/" || req.url === "/viewer") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+    return res.end(fs.readFileSync(path.join(__dirname, "..", "web", "viewer.html")));
+  }
+  res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+  res.end("Not found\\n");
 });
 
 const wss = new WebSocketServer({
