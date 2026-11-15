@@ -1,0 +1,16 @@
+name = "nexa-remote-relay"
+main = "src/index.js"
+compatibility_date = "2026-11-15"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "ROOM_HUB"
+class_name = "RoomHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomHub"]
