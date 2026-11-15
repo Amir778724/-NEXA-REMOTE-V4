@@ -3,6 +3,7 @@ package com.nexa.remote
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,7 +60,8 @@ class MainActivity : ComponentActivity() {
                             visiblePairCode.value = code
                             requestScreenCapture()
                         },
-                        onStopCapture = { stopScreenCapture() }
+                        onStopCapture = { stopScreenCapture() },
+                        onEnableRemoteTaps = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
                     )
                 }
             }
@@ -83,7 +85,8 @@ class MainActivity : ComponentActivity() {
 private fun HomeScreen(
     pairingCode: String,
     onStartCapture: (String, String) -> Unit,
-    onStopCapture: () -> Unit
+    onStopCapture: () -> Unit,
+    onEnableRemoteTaps: () -> Unit
 ) {
     var serverUrl by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
@@ -136,13 +139,19 @@ private fun HomeScreen(
             )
         }
         Button(
+            onClick = onEnableRemoteTaps,
+            modifier = Modifier.padding(top = 12.dp)
+        ) {
+            Text("فعال‌سازی لمس از راه دور")
+        }
+        Button(
             onClick = onStopCapture,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier.padding(top = 10.dp)
         ) {
             Text("توقف اشتراک صفحه")
         }
         Text(
-            "پس از زدن شروع، اجازه رسمی اندروید را تایید کنید. کد را فقط به فرد مورد اعتماد بدهید. اعلان دائمی و دکمه توقف همیشه در دسترس‌اند.",
+            "پس از زدن شروع، اجازه رسمی اندروید را تایید کنید. کد را فقط به فرد مورد اعتماد بدهید. برای لمس از راه دور، سرویس دسترس‌پذیری را خودتان در تنظیمات اندروید فعال کنید. اعلان دائمی و دکمه توقف همیشه در دسترس‌اند.",
             modifier = Modifier.padding(top = 18.dp),
             style = MaterialTheme.typography.bodySmall
         )
