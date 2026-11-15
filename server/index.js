@@ -96,6 +96,19 @@ wss.on("connection", ws => {
       return;
     }
 
+    if (msg.type === "tap") {
+      const room = ws.roomCode && rooms.get(ws.roomCode);
+      if (!room || room.viewer !== ws) return;
+      const now = Date.now();
+      if (ws.lastTapAt && now - ws.lastTapAt < 100) return;
+      ws.lastTapAt = now;
+      const x = Number(msg.x);
+      const y = Number(msg.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) return;
+      send(room.host, { type: "tap", x, y });
+      return;
+    }
+
     if (msg.type === "stop") {
       detach(ws);
       ws.close(1000, "Session stopped");
