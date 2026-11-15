@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NEXA Remote</string>
+    <string name="notification_channel_name">اشتراک صفحه</string>
+    <string name="notification_title">NEXA Remote فعال است</string>
+    <string name="notification_text">اشتراک صفحه با اجازه شما در حال اجراست</string>
+    <string name="notification_stop">توقف اشتراک</string>
+</resources>
