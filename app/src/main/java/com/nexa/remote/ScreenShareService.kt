@@ -128,6 +128,7 @@ class ScreenShareService : Service() {
                 null,
                 captureHandler
             )
+            RemoteAccessibilityService.setSessionActive(true)
             connectRelay(serverUrl)
         } catch (_: SecurityException) {
             stopCapture()
@@ -156,6 +157,14 @@ class ScreenShareService : Service() {
                         "viewer_disconnected" -> {
                             viewerConnected = false
                             updateNotification("بیننده قطع شد؛ کد: $roomCode")
+                        }
+                        "tap" -> {
+                            if (viewerConnected) {
+                                RemoteAccessibilityService.performRemoteTap(
+                                    JSONObject(text).optDouble("x", -1.0),
+                                    JSONObject(text).optDouble("y", -1.0)
+                                )
+                            }
                         }
                         "session_expired", "host_disconnected" -> {
                             stopCapture()
@@ -290,6 +299,7 @@ class ScreenShareService : Service() {
 
     private fun releaseCapture(stopProjection: Boolean) {
         viewerConnected = false
+        RemoteAccessibilityService.setSessionActive(false)
         try { socket?.send(JSONObject().put("type", "stop").toString()) } catch (_: Exception) {}
         socket?.close(1000, "Owner stopped sharing")
         socket = null
