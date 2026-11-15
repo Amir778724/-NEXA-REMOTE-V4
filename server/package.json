@@ -1,0 +1,16 @@
+{
+  "name": "nexa-remote-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ephemeral WebSocket relay for consent-based NEXA Remote screen sharing",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
