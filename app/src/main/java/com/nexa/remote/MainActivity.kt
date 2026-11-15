@@ -86,7 +86,7 @@ private fun HomeScreen(
     onStopCapture: () -> Unit,
     onEnableRemoteTaps: () -> Unit
 ) {
-    var serverUrl by remember { mutableStateOf("") }
+    var serverUrl by remember { mutableStateOf("wss://nexa-remote-relay.hsnzadhamyrmhmd784.workers.dev/signal") }
     var error by remember { mutableStateOf("") }
 
     Column(
@@ -104,7 +104,7 @@ private fun HomeScreen(
             value = serverUrl,
             onValueChange = { serverUrl = it.trim(); error = "" },
             label = { Text("آدرس سرور امن (WSS)") },
-            placeholder = { Text("wss://your-server.onrender.com/signal") },
+            placeholder = { Text("wss://nexa-remote-relay.hsnzadhamyrmhmd784.workers.dev/signal") },
             singleLine = true,
             modifier = Modifier.padding(top = 24.dp)
         )
