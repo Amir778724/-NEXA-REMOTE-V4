@@ -217,7 +217,7 @@ class ScreenShareService : Service() {
             bitmap.recycle()
             val bytes = output.toByteArray()
             output.close()
-            if (bytes.size <= MAX_FRAME_BYTES && socket?.queueSize() ?: Long.MAX_VALUE < MAX_QUEUE_BYTES) {
+            if (bytes.size <= MAX_FRAME_BYTES && (socket?.queueSize() ?: Long.MAX_VALUE) < MAX_QUEUE_BYTES) {
                 socket?.send(ByteString.of(*bytes))
             }
         } catch (_: Exception) {
