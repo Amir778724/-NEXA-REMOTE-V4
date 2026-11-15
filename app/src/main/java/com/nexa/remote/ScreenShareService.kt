@@ -16,7 +16,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.DisplayMetrics
-import android.view.Display
 import android.view.WindowManager
 
 /**
@@ -166,8 +165,9 @@ class ScreenShareService : Service() {
         imageReader?.setOnImageAvailableListener(null, null)
         imageReader?.close()
         imageReader = null
-        projection?.stop()
+        val activeProjection = projection
         projection = null
+        activeProjection?.stop()
         if (Build.VERSION.SDK_INT >= 24) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
