@@ -16,7 +16,7 @@ const server = http.createServer((req, res) => {
   }
   if (req.url === "/" || req.url === "/viewer") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-    return res.end(fs.readFileSync(path.join(__dirname, "..", "web", "viewer.html")));
+    return res.end(fs.readFileSync(path.join(__dirname, "public", "viewer.html")));
   }
   res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
   res.end("Not found\\n");
