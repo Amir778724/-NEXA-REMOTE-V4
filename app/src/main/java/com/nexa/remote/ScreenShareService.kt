@@ -86,7 +86,7 @@ class ScreenShareService : Service() {
 
             projection?.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
-                    stopCapture()
+                    releaseCapture(stopProjection = false)
                     stopSelf()
                 }
             }, Handler(Looper.getMainLooper()))
@@ -159,7 +159,9 @@ class ScreenShareService : Service() {
         }
     }
 
-    private fun stopCapture() {
+    private fun stopCapture() = releaseCapture(stopProjection = true)
+
+    private fun releaseCapture(stopProjection: Boolean) {
         virtualDisplay?.release()
         virtualDisplay = null
         imageReader?.setOnImageAvailableListener(null, null)
@@ -167,7 +169,7 @@ class ScreenShareService : Service() {
         imageReader = null
         val activeProjection = projection
         projection = null
-        activeProjection?.stop()
+        if (stopProjection) activeProjection?.stop()
         if (Build.VERSION.SDK_INT >= 24) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
