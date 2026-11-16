@@ -211,7 +211,7 @@ class ScreenShareService : Service() {
                             }
                         }
                         "tap" -> {
-                            if (viewerConnected) {
+                            if (viewerConnected && !deviceLocked) {
                                 RemoteAccessibilityService.performRemoteTap(
                                     JSONObject(text).optDouble("x", -1.0),
                                     JSONObject(text).optDouble("y", -1.0)
@@ -265,7 +265,7 @@ class ScreenShareService : Service() {
                 }
                 // A sleeping network stack may have dropped the relay socket.
                 // Retry immediately after the owner unlocks the device.
-                if (!lockedNow && socket == null && !stopping) scheduleReconnect()
+                if (!lockedNow && !stopping && projection != null) reconnectAfterUnlock()
             }
         }
         val filter = IntentFilter().apply {
@@ -280,6 +280,26 @@ class ScreenShareService : Service() {
             registerReceiver(receiver, filter)
         }
         lockStateReceiver = receiver
+    }
+
+    private fun reconnectAfterUnlock() {
+        // Recreate the relay socket after unlock: mobile networks can leave a
+        // half-open WebSocket that still looks present but no longer carries frames.
+        reconnectRunnable?.let(mainHandler::removeCallbacks)
+        reconnectRunnable = null
+        val oldSocket = socket
+        socket = null
+        viewerConnected = false
+        try { oldSocket?.close(1001, "Device unlocked; refresh relay") } catch (_: Exception) {}
+        if (stopping || projection == null || activeServerUrl.isBlank()) return
+        val task = Runnable {
+            reconnectRunnable = null
+            if (!stopping && projection != null && socket == null) {
+                connectRelay(activeServerUrl)
+            }
+        }
+        reconnectRunnable = task
+        mainHandler.postDelayed(task, 1_500L)
     }
 
     private fun sendLockState(target: WebSocket) {
