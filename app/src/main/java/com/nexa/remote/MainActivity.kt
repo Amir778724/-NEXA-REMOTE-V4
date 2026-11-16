@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
                     var message by remember { mutableStateOf("") }
                     var connected by remember { mutableStateOf(false) }
                     var showMenu by remember { mutableStateOf(false) }
+                    var showSettings by remember { mutableStateOf(false) }
                     var showRemoteSettings by remember { mutableStateOf(false) }
 
                     fun saveLinks(values: List<String>) {
@@ -101,7 +102,7 @@ class MainActivity : ComponentActivity() {
                                 Text("NEXA", style = MaterialTheme.typography.headlineMedium,
                                     color = MaterialTheme.colorScheme.primary)
                                 Text(
-                                    if (showRemoteSettings) "تنظیمات  /  ریموت" else "CONFIG  •  VPN",
+                                    if (showRemoteSettings) "تنظیمات  /  ریموت" else if (showSettings) "تنظیمات" else "CONFIG  •  VPN",
                                     color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.labelMedium
                                 )
@@ -114,11 +115,11 @@ class MainActivity : ComponentActivity() {
                                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                     DropdownMenuItem(
                                         text = { Text("Settings") },
-                                        onClick = { showMenu = false; showRemoteSettings = true }
+                                        onClick = { showMenu = false; showSettings = true; showRemoteSettings = false }
                                     )
                                     DropdownMenuItem(
                                         text = { Text("صفحه اصلی") },
-                                        onClick = { showMenu = false; showRemoteSettings = false }
+                                        onClick = { showMenu = false; showSettings = false; showRemoteSettings = false }
                                     )
                                 }
                             }
@@ -126,7 +127,7 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(Modifier.height(14.dp))
 
-                        if (!showRemoteSettings) {
+                        if (!showSettings) {
                             Text("کانفیگ‌های من", style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
@@ -247,6 +248,26 @@ class MainActivity : ComponentActivity() {
                                         enabled = connected,
                                         modifier = Modifier.fillMaxWidth()
                                     ) { Text("قطع کردن VPN") }
+                                }
+                            }
+                        } else if (!showRemoteSettings) {
+                            Text("تنظیمات", style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(12.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                TextButton(
+                                    onClick = { showRemoteSettings = true },
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp)
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
+                                        Text("Remote", style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.primary)
+                                        Text("کد اتصال و نمایش صفحه گوشی",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
                                 }
                             }
                         } else {
