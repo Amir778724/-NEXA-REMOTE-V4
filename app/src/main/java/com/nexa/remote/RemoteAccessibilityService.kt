@@ -1,6 +1,7 @@
 package com.nexa.remote
 
 import android.accessibilityservice.AccessibilityService
+import android.app.KeyguardManager
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.util.DisplayMetrics
@@ -39,6 +40,8 @@ class RemoteAccessibilityService : AccessibilityService() {
         fun performRemoteTap(normalizedX: Double, normalizedY: Double) {
             if (!sessionActive || normalizedX !in 0.0..1.0 || normalizedY !in 0.0..1.0) return
             val service = instance ?: return
+            // Keep the session connected, but never inject remote gestures over a locked keyguard.
+            if (service.getSystemService(KeyguardManager::class.java).isKeyguardLocked) return
             val now = System.currentTimeMillis()
             if (now - lastTapAt < 120L) return
             lastTapAt = now
