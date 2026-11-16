@@ -748,7 +748,7 @@ private fun RemoteControls(
     }, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Start screen sharing" else "شروع اشتراک صفحه") }
     if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
     if (pairingCode.isNotBlank()) Text("کد اتصال: $pairingCode")
-    TextButton(onClick = onGetLocation, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Show phone location" else "نمایش مکان همین گوشی") }
+    TextButton(onClick = onGetLocation, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Show phone location" else "نمایش مکان گوشی کددهنده (فقط همین گوشی)") }
     if (locationText.isNotBlank()) Text(locationText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         TextButton(onClick = onEnableRemoteTaps) { Text(if (appLanguage == "en") "Enable remote touch" else "فعال‌سازی لمس از راه دور") }
