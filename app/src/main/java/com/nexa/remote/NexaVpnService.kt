@@ -15,7 +15,7 @@ class NexaVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
 
     private val dialerController = object : DialerController {
-        override fun protectFd(fd: Int): Boolean = this@NexaVpnService.protect(fd)
+        override fun protectFd(fd: Long): Boolean = this@NexaVpnService.protect(fd.toInt())
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
