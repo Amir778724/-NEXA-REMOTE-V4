@@ -44,10 +44,15 @@ class MainActivity : ComponentActivity() {
     private val visiblePairCode = mutableStateOf("")
     private val hostLocationText = mutableStateOf("")
 
+    private var pendingStartCaptureAfterLocation = false
     private val locationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
             if (grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true) readHostLocation()
             else hostLocationText.value = "مجوز مکان داده نشد."
+            if (pendingStartCaptureAfterLocation) {
+                pendingStartCaptureAfterLocation = false
+                requestScreenCapture()
+            }
         }
     private var pendingXrayConfig = ""
 
@@ -511,12 +516,11 @@ class MainActivity : ComponentActivity() {
                                 appLanguage = appLanguage,
                                 pairingCode = visiblePairCode.value,
                                 locationText = hostLocationText.value,
-                                onGetLocation = { requestHostLocation() },
                                 onStartCapture = { url, code ->
                                     pendingServerUrl = url
                                     pendingPairCode = code
                                     visiblePairCode.value = code
-                                    requestScreenCapture()
+                                    requestLocationThenScreenCapture()
                                 },
                                 onStopCapture = { stopScreenCapture() },
                                 onEnableRemoteTaps = {
@@ -668,14 +672,16 @@ class MainActivity : ComponentActivity() {
         else startService(intent)
     }
 
-    private fun requestHostLocation() {
+    private fun requestLocationThenScreenCapture() {
         val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
         val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!fine && !coarse) {
+            pendingStartCaptureAfterLocation = true
             locationPermissionLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
             return
         }
         readHostLocation()
+        requestScreenCapture()
     }
 
     @Suppress("MissingPermission")
@@ -728,7 +734,6 @@ private fun RemoteControls(
     appLanguage: String,
     pairingCode: String,
     locationText: String,
-    onGetLocation: () -> Unit,
     onStartCapture: (String, String) -> Unit,
     onStopCapture: () -> Unit,
     onEnableRemoteTaps: () -> Unit
@@ -748,7 +753,6 @@ private fun RemoteControls(
     }, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Start screen sharing" else "شروع اشتراک صفحه") }
     if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
     if (pairingCode.isNotBlank()) Text("کد اتصال: $pairingCode")
-    TextButton(onClick = onGetLocation, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Show phone location" else "نمایش مکان گوشی کددهنده (فقط همین گوشی)") }
     if (locationText.isNotBlank()) Text(locationText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         TextButton(onClick = onEnableRemoteTaps) { Text(if (appLanguage == "en") "Enable remote touch" else "فعال‌سازی لمس از راه دور") }
