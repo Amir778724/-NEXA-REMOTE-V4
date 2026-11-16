@@ -37,6 +37,46 @@ class RemoteAccessibilityService : AccessibilityService() {
             if (!active) lastTapAt = 0L
         }
 
+        fun performRemoteSwipe(
+            normalizedStartX: Double,
+            normalizedStartY: Double,
+            normalizedEndX: Double,
+            normalizedEndY: Double,
+            requestedDuration: Long
+        ) {
+            if (!sessionActive ||
+                normalizedStartX !in 0.0..1.0 || normalizedStartY !in 0.0..1.0 ||
+                normalizedEndX !in 0.0..1.0 || normalizedEndY !in 0.0..1.0
+            ) return
+            val service = instance ?: return
+            if (service.getSystemService(KeyguardManager::class.java).isKeyguardLocked) return
+
+            // A downward swipe beginning at the very top opens the owner's notification shade.
+            if (normalizedStartY <= 0.07 && normalizedEndY - normalizedStartY >= 0.12) {
+                service.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+                return
+            }
+
+            val metrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            (service.getSystemService(WindowManager::class.java).defaultDisplay).getRealMetrics(metrics)
+            val width = metrics.widthPixels.coerceAtLeast(2)
+            val height = metrics.heightPixels.coerceAtLeast(2)
+            val startX = (normalizedStartX * (width - 1)).toFloat()
+            val startY = (normalizedStartY * (height - 1)).toFloat()
+            val endX = (normalizedEndX * (width - 1)).toFloat()
+            val endY = (normalizedEndY * (height - 1)).toFloat()
+            val path = Path().apply {
+                moveTo(startX, startY)
+                lineTo(endX, endY)
+            }
+            val duration = requestedDuration.coerceIn(100L, 800L)
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+                .build()
+            service.dispatchGesture(gesture, null, null)
+        }
+
         fun performRemoteTap(normalizedX: Double, normalizedY: Double) {
             if (!sessionActive || normalizedX !in 0.0..1.0 || normalizedY !in 0.0..1.0) return
             val service = instance ?: return

@@ -150,6 +150,20 @@ export class RoomHub {
       return;
     }
 
+    if (msg.type === "swipe") {
+      const room = a.code ? this.findRoom(a.code) : null;
+      if (!room || room.viewer !== ws) return;
+      const now = Date.now();
+      if (a.lastGestureAt && now - a.lastGestureAt < 250) return;
+      const x1 = Number(msg.x1), y1 = Number(msg.y1), x2 = Number(msg.x2), y2 = Number(msg.y2);
+      if (![x1, y1, x2, y2].every(Number.isFinite) ||
+          [x1, y1, x2, y2].some(n => n < 0 || n > 1)) return;
+      const duration = Math.max(100, Math.min(800, Number(msg.duration) || 300));
+      this.save(ws, { ...a, lastGestureAt: now });
+      this.send(room.host, { type: "swipe", x1, y1, x2, y2, duration });
+      return;
+    }
+
     if (msg.type === "tap") {
       const room = a.code ? this.findRoom(a.code) : null;
       if (!room || room.viewer !== ws) return;

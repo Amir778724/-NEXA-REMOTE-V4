@@ -187,6 +187,18 @@ class ScreenShareService : Service() {
                                 webSocket.close(4001, "Viewer requested refresh")
                             }
                         }
+                        "swipe" -> {
+                            if (viewerConnected && !deviceLocked) {
+                                val message = JSONObject(text)
+                                RemoteAccessibilityService.performRemoteSwipe(
+                                    message.optDouble("x1", -1.0),
+                                    message.optDouble("y1", -1.0),
+                                    message.optDouble("x2", -1.0),
+                                    message.optDouble("y2", -1.0),
+                                    message.optLong("duration", 300L)
+                                )
+                            }
+                        }
                         "tap" -> {
                             if (viewerConnected) {
                                 RemoteAccessibilityService.performRemoteTap(

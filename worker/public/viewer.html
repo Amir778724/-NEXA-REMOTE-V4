@@ -6,7 +6,7 @@
 <title>NEXA Remote Viewer</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}
-body{margin:0;background:#0b1020;color:#f3f5ff;min-height:100vh;display:grid;place-items:center;padding:20px}
+html,body{overscroll-behavior:none}body{margin:0;background:#0b1020;color:#f3f5ff;min-height:100vh;display:grid;place-items:center;padding:20px;overscroll-behavior-y:none}
 main{width:min(900px,100%);background:#151d33;border:1px solid #2b3858;border-radius:22px;padding:22px;box-shadow:0 18px 60px #0006}
 h1{margin:0 0 8px;font-size:25px}.muted{color:#aab6d2;line-height:1.8}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
@@ -15,8 +15,8 @@ input{background:#0c1428;color:white;flex:1;min-width:180px;letter-spacing:4px;t
 button{background:#6d8cff;color:#081126;border:0;font-weight:700;cursor:pointer}
 button:disabled{opacity:.45;cursor:not-allowed}
 #status{padding:10px 12px;border-radius:10px;background:#0d162b;color:#c6d2ee}
-.frame{margin-top:16px;background:#05080f;min-height:240px;border-radius:14px;display:grid;place-items:center;overflow:hidden}
-img{display:block;max-width:100%;max-height:70vh;object-fit:contain}
+.frame{margin-top:16px;background:#05080f;min-height:240px;border-radius:14px;display:grid;place-items:center;overflow:hidden;touch-action:none;overscroll-behavior:contain}
+img{display:block;max-width:100%;max-height:70vh;object-fit:contain;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 small{display:block;margin-top:14px;color:#8998ba}
 </style>
 </head>
@@ -30,7 +30,7 @@ small{display:block;margin-top:14px;color:#8998ba}
 </main>
 <script>
 const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), refresh=document.querySelector('#refresh'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty');
-let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='', deviceLocked=false, lastFrameAt=0, viewerReadyAt=0, lastRefreshAt=0;
+let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='', deviceLocked=false, lastFrameAt=0, viewerReadyAt=0, lastRefreshAt=0, activePointer=null, suppressClickUntil=0;
 function status(t){statusEl.textContent=t}
 function clearFrame(){if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false}
 function stop(){
@@ -104,7 +104,33 @@ setInterval(()=>{
     status('تصویر متوقف شده؛ درخواست تازه‌سازی ارسال شد…');
   }
 },5000);
+screen.addEventListener('contextmenu',event=>event.preventDefault());
+screen.addEventListener('dragstart',event=>event.preventDefault());
+screen.addEventListener('pointerdown',event=>{
+  if(!ws||ws.readyState!==WebSocket.OPEN||deviceLocked||!screen.naturalWidth||!screen.naturalHeight)return;
+  event.preventDefault();
+  activePointer={id:event.pointerId,x:event.clientX,y:event.clientY,start:Date.now()};
+  try{screen.setPointerCapture(event.pointerId)}catch{}
+});
+screen.addEventListener('pointerup',event=>{
+  if(!activePointer||activePointer.id!==event.pointerId)return;
+  event.preventDefault();
+  const start=activePointer;activePointer=null;
+  if(!ws||ws.readyState!==WebSocket.OPEN||deviceLocked)return;
+  const r=screen.getBoundingClientRect();if(!r.width||!r.height)return;
+  const point=(px,py)=>({x:Math.max(0,Math.min(1,(px-r.left)/r.width)),y:Math.max(0,Math.min(1,(py-r.top)/r.height))});
+  const a=point(start.x,start.y),b=point(event.clientX,event.clientY);
+  const distance=Math.hypot(event.clientX-start.x,event.clientY-start.y);
+  suppressClickUntil=Date.now()+500;
+  if(distance<12){
+    ws.send(JSON.stringify({type:'tap',x:b.x,y:b.y}));
+  }else{
+    ws.send(JSON.stringify({type:'swipe',x1:a.x,y1:a.y,x2:b.x,y2:b.y,duration:Math.max(100,Math.min(800,Date.now()-start.start))}));
+  }
+});
+screen.addEventListener('pointercancel',()=>{activePointer=null});
 screen.addEventListener('click',event=>{
+  if(Date.now()<suppressClickUntil){event.preventDefault();return}
   if(!ws||ws.readyState!==WebSocket.OPEN||deviceLocked)return;
   const r=screen.getBoundingClientRect();if(!r.width||!r.height)return;
   const x=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));
