@@ -30,7 +30,7 @@ small{display:block;margin-top:14px;color:#8998ba}
 </main>
 <script>
 const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty');
-let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='';
+let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='', deviceLocked=false;
 function status(t){statusEl.textContent=t}
 function clearFrame(){if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false}
 function stop(){
@@ -83,7 +83,7 @@ connect.onclick=()=>{
 };
 disconnect.onclick=()=>{stop();status('اتصال قطع شد.')};
 screen.addEventListener('click',event=>{
-  if(!ws||ws.readyState!==WebSocket.OPEN)return;
+  if(!ws||ws.readyState!==WebSocket.OPEN||deviceLocked)return;
   const r=screen.getBoundingClientRect();if(!r.width||!r.height)return;
   const x=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));
   const y=Math.max(0,Math.min(1,(event.clientY-r.top)/r.height));
