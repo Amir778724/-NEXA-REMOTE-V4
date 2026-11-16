@@ -60,19 +60,28 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
-                    primary = androidx.compose.ui.graphics.Color(0xFF5B8CFF),
-                    secondary = androidx.compose.ui.graphics.Color(0xFF9B6BFF),
-                    background = androidx.compose.ui.graphics.Color(0xFF10121B),
-                    surface = androidx.compose.ui.graphics.Color(0xFF191D2B)
+                    primary = androidx.compose.ui.graphics.Color(0xFF35D6C8),
+                    secondary = androidx.compose.ui.graphics.Color(0xFF9B7BFF),
+                    background = androidx.compose.ui.graphics.Color(0xFF0B0F18),
+                    surface = androidx.compose.ui.graphics.Color(0xFF151C29),
+                    surfaceVariant = androidx.compose.ui.graphics.Color(0xFF202A3A)
+                ),
+                shapes = Shapes(
+                    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    small = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                    medium = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
                 )
             ) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     var links by remember { mutableStateOf(initialLinks) }
                     var newLink by remember { mutableStateOf("") }
                     var selected by remember { mutableIntStateOf(0) }
                     var message by remember { mutableStateOf("") }
                     var connected by remember { mutableStateOf(false) }
-                    var page by remember { mutableIntStateOf(0) }
+                    var showMenu by remember { mutableStateOf(false) }
+                    var showRemoteSettings by remember { mutableStateOf(false) }
 
                     fun saveLinks(values: List<String>) {
                         links = values
@@ -81,152 +90,190 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(18.dp),
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("NEXA", style = MaterialTheme.typography.headlineLarge)
-                        Text("REMOTE  •  VPN", color = MaterialTheme.colorScheme.secondary)
-                        Spacer(Modifier.height(18.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { page = 0 }, modifier = Modifier.weight(1f), enabled = page != 0) { Text("۱. کانفیگ‌ها") }
-                            Button(onClick = { page = 1 }, modifier = Modifier.weight(1f), enabled = page != 1) { Text("۲. اتصال VPN") }
-                            Button(onClick = { page = 2 }, modifier = Modifier.weight(1f), enabled = page != 2) { Text("۳. ریموت") }
-                        }
-                        if (page == 0) {
-                        Text("کانفیگ‌های من", style = MaterialTheme.typography.titleLarge)
-                        OutlinedTextField(
-                            value = newLink,
-                            onValueChange = { newLink = it; message = "" },
-                            label = { Text("لینک VLESS خودت را وارد کن") },
-                            placeholder = { Text("vless://...") },
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            minLines = 2
-                        )
-                        Button(
-                            onClick = {
-                                val link = newLink.trim()
-                                if (!link.startsWith("vless://", ignoreCase = true)) {
-                                    message = "لینک باید با vless:// شروع شود."
-                                } else if (links.contains(link)) {
-                                    message = "این کانفیگ قبلاً اضافه شده است."
-                                } else {
-                                    saveLinks(links + link)
-                                    newLink = ""
-                                    message = "کانفیگ به فهرست شخصی تو اضافه شد."
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("NEXA", style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    if (showRemoteSettings) "تنظیمات  /  ریموت" else "CONFIG  •  VPN",
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                            Box {
+                                TextButton(onClick = { showMenu = true }) {
+                                    Text("⋮", style = MaterialTheme.typography.headlineMedium,
+                                        color = MaterialTheme.colorScheme.primary)
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                        ) { Text("افزودن کانفیگ") }
-
-                        if (message.isNotBlank()) {
-                            Text(message, color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(top = 6.dp))
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                            itemsIndexed(links) { index, link ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (selected == index)
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                        else MaterialTheme.colorScheme.surface
+                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text("Settings") },
+                                        onClick = { showMenu = false; showRemoteSettings = true }
                                     )
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        RadioButton(selected == index, onClick = { selected = index })
-                                        Column(Modifier.weight(1f)) {
-                                            Text("کانفیگ ${index + 1}")
-                                            Text(link.substringAfter("://").take(34),
-                                                style = MaterialTheme.typography.bodySmall)
-                                        }
-                                        TextButton(onClick = {
-                                            saveLinks(links.filterIndexed { i, _ -> i != index })
-                                            message = "کانفیگ حذف شد."
-                                        }) { Text("حذف") }
-                                    }
+                                    DropdownMenuItem(
+                                        text = { Text("صفحه اصلی") },
+                                        onClick = { showMenu = false; showRemoteSettings = false }
+                                    )
                                 }
                             }
                         }
-                        Button(onClick = { page = 1 }, enabled = links.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                            Text("رفتن به صفحه اتصال")
-                        }
-                        } else if (page == 1) {
-                        Text("اتصال VPN", style = MaterialTheme.typography.titleLarge)
-                        Text(
-                            if (selected in links.indices) "کانفیگ انتخاب‌شده: ${selected + 1}" else "هنوز کانفیگی انتخاب نشده",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            if (connected) "وضعیت: در حال اتصال" else "وضعیت: قطع",
-                            color = if (connected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Button(
-                            onClick = {
-                                if (selected !in links.indices) {
-                                    message = "اول یک کانفیگ اضافه کن."
-                                } else {
-                                    val result = makeXrayConfig(links[selected])
-                                    if (result.first.isBlank()) message = result.second
-                                    else {
-                                        pendingXrayConfig = result.first
-                                        val consent = VpnService.prepare(this@MainActivity)
-                                        if (consent != null) vpnConsentLauncher.launch(consent)
-                                        else startVpnService(pendingXrayConfig)
-                                        connected = true
-                                        message = "درخواست اتصال ارسال شد."
-                                    }
-                                }
-                            },
-                            enabled = !connected && links.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                        ) { Text("اتصال VPN") }
-                        OutlinedButton(
-                            onClick = {
-                                startService(Intent(this@MainActivity, NexaVpnService::class.java).apply {
-                                    action = NexaVpnService.ACTION_STOP
-                                })
-                                connected = false
-                                message = "درخواست قطع اتصال ارسال شد."
-                            },
-                            enabled = connected,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("قطع اتصال") }
 
-                        Button(onClick = { page = 2 }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                            Text("رفتن به صفحه ریموت")
-                        }
-                        } else {
-                        Text("NEXA REMOTE", style = MaterialTheme.typography.titleLarge)
-                        Text("اشتراک صفحه و کنترل از راه دور", style = MaterialTheme.typography.bodyMedium)
-                        RemoteControls(
-                            pairingCode = visiblePairCode.value,
-                            onStartCapture = { url, code ->
-                                pendingServerUrl = url
-                                pendingPairCode = code
-                                visiblePairCode.value = code
-                                requestScreenCapture()
-                            },
-                            onStopCapture = { stopScreenCapture() },
-                            onEnableRemoteTaps = {
-                                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        Spacer(Modifier.height(14.dp))
+
+                        if (!showRemoteSettings) {
+                            Text("کانفیگ‌های من", style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = newLink,
+                                onValueChange = { newLink = it; message = "" },
+                                label = { Text("لینک VLESS را وارد کن") },
+                                placeholder = { Text("vless://...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                                shape = MaterialTheme.shapes.medium
+                            )
+                            Button(
+                                onClick = {
+                                    val link = newLink.trim()
+                                    if (!link.startsWith("vless://", ignoreCase = true)) {
+                                        message = "لینک باید با vless:// شروع شود."
+                                    } else if (links.contains(link)) {
+                                        message = "این کانفیگ قبلاً اضافه شده است."
+                                    } else {
+                                        saveLinks(links + link)
+                                        newLink = ""
+                                        message = "کانفیگ به فهرست اضافه شد."
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            ) { Text("افزودن کانفیگ") }
+
+                            if (message.isNotBlank()) {
+                                Text(message, color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(top = 6.dp))
                             }
-                        )
-                        Button(onClick = { page = 0 }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                            Text("بازگشت به کانفیگ‌ها")
-                        }
+
+                            Spacer(Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("انتخاب کانفیگ", style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.weight(1f))
+                                Text("${links.size} مورد", color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelMedium)
+                            }
+                            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                                itemsIndexed(links) { index, link ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (selected == index)
+                                                MaterialTheme.colorScheme.surfaceVariant
+                                            else MaterialTheme.colorScheme.surface
+                                        ),
+                                        border = if (selected == index)
+                                            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                                        else null
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            RadioButton(selected == index, onClick = { selected = index })
+                                            Column(Modifier.weight(1f)) {
+                                                Text("کانفیگ ${index + 1}")
+                                                Text(link.substringAfter("://").take(34),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            TextButton(onClick = {
+                                                saveLinks(links.filterIndexed { i, _ -> i != index })
+                                                message = "کانفیگ حذف شد."
+                                            }) { Text("حذف") }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            ) {
+                                Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                                    Text("اتصال VPN", style = MaterialTheme.typography.titleLarge)
+                                    Text(
+                                        if (connected) "وضعیت: درخواست اتصال ارسال شده"
+                                        else "وضعیت: قطع",
+                                        color = if (connected) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                    Button(
+                                        onClick = {
+                                            if (selected !in links.indices) {
+                                                message = "اول یک کانفیگ انتخاب یا اضافه کن."
+                                            } else {
+                                                val result = makeXrayConfig(links[selected])
+                                                if (result.first.isBlank()) message = result.second
+                                                else {
+                                                    pendingXrayConfig = result.first
+                                                    val consent = VpnService.prepare(this@MainActivity)
+                                                    if (consent != null) vpnConsentLauncher.launch(consent)
+                                                    else startVpnService(pendingXrayConfig)
+                                                    connected = true
+                                                    message = "درخواست اتصال ارسال شد."
+                                                }
+                                            }
+                                        },
+                                        enabled = !connected && links.isNotEmpty(),
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                    ) { Text("وصل کردن VPN") }
+                                    OutlinedButton(
+                                        onClick = {
+                                            startService(Intent(this@MainActivity, NexaVpnService::class.java).apply {
+                                                action = NexaVpnService.ACTION_STOP
+                                            })
+                                            connected = false
+                                            message = "درخواست قطع اتصال ارسال شد."
+                                        },
+                                        enabled = connected,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) { Text("قطع کردن VPN") }
+                                }
+                            }
+                        } else {
+                            Text("NEXA REMOTE", style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier.fillMaxWidth())
+                            Text("کد اتصال و نمایش صفحه گوشی", style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp))
+                            RemoteControls(
+                                pairingCode = visiblePairCode.value,
+                                onStartCapture = { url, code ->
+                                    pendingServerUrl = url
+                                    pendingPairCode = code
+                                    visiblePairCode.value = code
+                                    requestScreenCapture()
+                                },
+                                onStopCapture = { stopScreenCapture() },
+                                onEnableRemoteTaps = {
+                                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                }
+                            )
                         }
                     }
                 }
             }
         }
     }
-
     private fun makeXrayConfig(link: String): Pair<String, String> {
         return try {
             val request = JSONObject()
