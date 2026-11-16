@@ -65,13 +65,21 @@ class MainActivity : ComponentActivity() {
         }.getOrDefault(emptyList())
 
         setContent {
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("dark_theme", true)) }
+            var appLanguage by remember { mutableStateOf(prefs.getString("app_language", "fa") ?: "fa") }
             MaterialTheme(
-                colorScheme = darkColorScheme(
+                colorScheme = if (isDarkTheme) darkColorScheme(
                     primary = androidx.compose.ui.graphics.Color(0xFF35D6C8),
                     secondary = androidx.compose.ui.graphics.Color(0xFF9B7BFF),
                     background = androidx.compose.ui.graphics.Color(0xFF0B0F18),
                     surface = androidx.compose.ui.graphics.Color(0xFF151C29),
                     surfaceVariant = androidx.compose.ui.graphics.Color(0xFF202A3A)
+                ) else lightColorScheme(
+                    primary = androidx.compose.ui.graphics.Color(0xFF087F78),
+                    secondary = androidx.compose.ui.graphics.Color(0xFF6650A4),
+                    background = androidx.compose.ui.graphics.Color(0xFFF5F7FA),
+                    surface = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+                    surfaceVariant = androidx.compose.ui.graphics.Color(0xFFE8EDF3)
                 ),
                 shapes = Shapes(
                     extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
@@ -95,6 +103,8 @@ class MainActivity : ComponentActivity() {
                     var remotePasswordError by remember { mutableStateOf("") }
                     var settingsDialogTitle by remember { mutableStateOf("") }
                     var settingsDialogBody by remember { mutableStateOf("") }
+                    var showAppearanceDialog by remember { mutableStateOf(false) }
+                    var showLanguageDialog by remember { mutableStateOf(false) }
 
                     fun saveLinks(values: List<String>) {
                         links = values
@@ -274,12 +284,12 @@ class MainActivity : ComponentActivity() {
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                            TextButton(onClick = { settingsDialogTitle = "ظاهر برنامه"; settingsDialogBody = "تم فعلی برنامه تیره است. تغییر تم در این نسخه پشتیبانی نمی‌شود." }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text("ظاهر برنامه"); Text("رنگ‌بندی تیره و چیدمان NEXA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            TextButton(onClick = { showAppearanceDialog = true }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("ظاهر برنامه"); Text(if (isDarkTheme) "تیره" else "روشن", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
-                                            TextButton(onClick = { settingsDialogTitle = "زبان برنامه"; settingsDialogBody = "زبان فعال برنامه فارسی است. زبان دیگری در این نسخه ارائه نشده است." }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text("زبان برنامه"); Text("فارسی", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            TextButton(onClick = { showLanguageDialog = true }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("زبان برنامه"); Text(if (appLanguage == "fa") "فارسی" else "English", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
                                             TextButton(onClick = { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) }, modifier = Modifier.fillMaxWidth()) {
@@ -358,6 +368,32 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                            }
+                            if (showAppearanceDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showAppearanceDialog = false },
+                                    title = { Text("ظاهر برنامه") },
+                                    text = {
+                                        Column {
+                                            TextButton(onClick = { isDarkTheme = true; prefs.edit().putBoolean("dark_theme", true).apply(); showAppearanceDialog = false }) { Text(if (isDarkTheme) "✓ تیره" else "تیره") }
+                                            TextButton(onClick = { isDarkTheme = false; prefs.edit().putBoolean("dark_theme", false).apply(); showAppearanceDialog = false }) { Text(if (!isDarkTheme) "✓ روشن" else "روشن") }
+                                        }
+                                    },
+                                    confirmButton = { TextButton(onClick = { showAppearanceDialog = false }) { Text("بستن") } }
+                                )
+                            }
+                            if (showLanguageDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showLanguageDialog = false },
+                                    title = { Text("زبان برنامه") },
+                                    text = {
+                                        Column {
+                                            TextButton(onClick = { appLanguage = "fa"; prefs.edit().putString("app_language", "fa").apply(); showLanguageDialog = false }) { Text(if (appLanguage == "fa") "✓ فارسی" else "فارسی") }
+                                            TextButton(onClick = { appLanguage = "en"; prefs.edit().putString("app_language", "en").apply(); showLanguageDialog = false }) { Text(if (appLanguage == "en") "✓ English" else "English") }
+                                        }
+                                    },
+                                    confirmButton = { TextButton(onClick = { showLanguageDialog = false }) { Text("بستن") } }
+                                )
                             }
                             if (settingsDialogTitle.isNotBlank()) {
                                 AlertDialog(
