@@ -47,6 +47,8 @@ class ScreenShareService : Service() {
     private var socket: WebSocket? = null
     private var viewerConnected = false
     private var lastFrameAt = 0L
+    private var lastSentLocationKey = ""
+    private var locationRelayRunnable: Runnable? = null
     private var captureThread: HandlerThread? = null
     private var captureHandler: Handler? = null
     private var roomCode: String = ""
@@ -186,10 +188,16 @@ class ScreenShareService : Service() {
                         "viewer_connected" -> {
                             viewerConnected = true
                             sendLockState(webSocket)
+                            lastSentLocationKey = ""
+                            relayHostLocation()
+                            scheduleLocationRelay()
                             updateNotification("بیننده متصل شد؛ کد: $roomCode")
                         }
                         "viewer_disconnected" -> {
                             viewerConnected = false
+                            locationRelayRunnable?.let(mainHandler::removeCallbacks)
+                            locationRelayRunnable = null
+                            lastSentLocationKey = ""
                             updateNotification("بیننده قطع شد؛ کد: $roomCode")
                         }
                         "reconnect_requested" -> {
@@ -300,6 +308,36 @@ class ScreenShareService : Service() {
         }
         reconnectRunnable = task
         mainHandler.postDelayed(task, 1_500L)
+    }
+
+    private fun relayHostLocation() {
+        if (!viewerConnected || stopping) return
+        val prefs = getSharedPreferences("nexa_remote_location", MODE_PRIVATE)
+        val latitude = prefs.getString("latitude", null)?.toDoubleOrNull() ?: return
+        val longitude = prefs.getString("longitude", null)?.toDoubleOrNull() ?: return
+        val timestamp = prefs.getLong("timestamp", 0L)
+        if (timestamp <= 0L || System.currentTimeMillis() - timestamp > 15 * 60 * 1000L) return
+        val key = "$latitude,$longitude,$timestamp"
+        if (key == lastSentLocationKey) return
+        val target = socket ?: return
+        if (target.send(JSONObject().put("type", "host_location")
+                .put("latitude", latitude).put("longitude", longitude)
+                .put("timestamp", timestamp).toString())) {
+            lastSentLocationKey = key
+        }
+    }
+
+    private fun scheduleLocationRelay() {
+        locationRelayRunnable?.let(mainHandler::removeCallbacks)
+        val task = object : Runnable {
+            override fun run() {
+                if (!viewerConnected || stopping) return
+                relayHostLocation()
+                mainHandler.postDelayed(this, 3000L)
+            }
+        }
+        locationRelayRunnable = task
+        mainHandler.post(task)
     }
 
     private fun sendLockState(target: WebSocket) {
@@ -433,6 +471,8 @@ class ScreenShareService : Service() {
         stopping = true
         reconnectRunnable?.let(mainHandler::removeCallbacks)
         reconnectRunnable = null
+        locationRelayRunnable?.let(mainHandler::removeCallbacks)
+        locationRelayRunnable = null
         viewerConnected = false
         RemoteAccessibilityService.setSessionActive(false)
         lockStateReceiver?.let { receiver ->
