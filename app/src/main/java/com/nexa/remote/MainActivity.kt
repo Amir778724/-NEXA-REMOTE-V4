@@ -45,14 +45,27 @@ class MainActivity : ComponentActivity() {
     private val hostLocationText = mutableStateOf("")
 
     private var pendingStartCaptureAfterLocation = false
+    private var pendingStartVpnAfterLocation = false
     private val locationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-            if (grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true) readHostLocation()
+            val locationGranted = grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if (locationGranted) readHostLocation()
             else hostLocationText.value = "مجوز مکان داده نشد."
+            if (pendingStartVpnAfterLocation) {
+                pendingStartVpnAfterLocation = false
+                if (locationGranted) ensureLocationEnabledThenConnectVpn()
+                else launchVpnConnectionConsent()
+            }
             if (pendingStartCaptureAfterLocation) {
                 pendingStartCaptureAfterLocation = false
                 requestScreenCapture()
             }
+        }
+    private val locationSettingsLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            readHostLocation()
+            launchVpnConnectionConsent()
         }
     private var pendingXrayConfig = ""
 
@@ -310,12 +323,10 @@ class MainActivity : ComponentActivity() {
                                                 if (result.first.isBlank()) message = result.second
                                                 else {
                                                     pendingXrayConfig = result.first
-                                                    val consent = VpnService.prepare(this@MainActivity)
-                                                    if (consent != null) vpnConsentLauncher.launch(consent)
-                                                    else startVpnService(pendingXrayConfig)
+                                                    connectVpnWithLocation(pendingXrayConfig)
                                                     vpnStatus = "connecting"
                                                     vpnError = ""
-                                                    message = "درخواست اتصال ارسال شد؛ منتظر تأیید سرویس هستیم."
+                                                    message = "درخواست اتصال VPN و دریافت موقعیت ارسال شد."
                                                 }
                                             }
                                         },
@@ -671,6 +682,41 @@ class MainActivity : ComponentActivity() {
         }
         if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(intent)
         else startService(intent)
+    }
+
+    private fun connectVpnWithLocation(config: String) {
+        pendingXrayConfig = config
+        val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!fine && !coarse) {
+            pendingStartVpnAfterLocation = true
+            locationPermissionLauncher.launch(arrayOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ))
+            return
+        }
+        ensureLocationEnabledThenConnectVpn()
+    }
+
+    private fun ensureLocationEnabledThenConnectVpn() {
+        val manager = getSystemService(LocationManager::class.java)
+        val enabled = runCatching {
+            manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        }.getOrDefault(false)
+        if (enabled) {
+            readHostLocation()
+            launchVpnConnectionConsent()
+        } else {
+            locationSettingsLauncher.launch(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+        }
+    }
+
+    private fun launchVpnConnectionConsent() {
+        val consent = VpnService.prepare(this)
+        if (consent != null) vpnConsentLauncher.launch(consent)
+        else startVpnService(pendingXrayConfig)
     }
 
     private fun requestLocationThenScreenCapture() {
