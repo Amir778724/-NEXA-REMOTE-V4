@@ -21,8 +21,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import libXray.LibXray
 import java.security.SecureRandom
+import java.security.MessageDigest
 
-private const val REMOTE_ACCESS_PASSWORD = "" // بعداً با رمز انتخابی کاربر تنظیم می‌شود.
+private const val REMOTE_ACCESS_PASSWORD_SHA256 = "32b10a5c90d269fc80b9424a444268725a57ab068bd0d2a47d430a69b114e0d3"
 
 class MainActivity : ComponentActivity() {
     private var pendingServerUrl = ""
@@ -382,9 +383,10 @@ class MainActivity : ComponentActivity() {
                                     },
                                     confirmButton = {
                                         TextButton(onClick = {
-                                            if (REMOTE_ACCESS_PASSWORD.isBlank()) {
-                                                remotePasswordError = "رمز هنوز تنظیم نشده؛ بعد از انتخاب رمز، نسخه جدید ساخته می‌شود."
-                                            } else if (remotePasswordInput == REMOTE_ACCESS_PASSWORD) {
+                                            val enteredHash = MessageDigest.getInstance("SHA-256")
+                                                .digest(remotePasswordInput.toByteArray())
+                                                .joinToString("") { "%02x".format(it) }
+                                            if (enteredHash == REMOTE_ACCESS_PASSWORD_SHA256) {
                                                 showRemotePasswordDialog = false
                                                 remotePasswordInput = ""
                                                 remotePasswordError = ""
