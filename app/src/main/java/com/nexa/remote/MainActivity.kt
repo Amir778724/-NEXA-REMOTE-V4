@@ -326,16 +326,19 @@ class MainActivity : ComponentActivity() {
                                             }
                                             Divider()
                                             TextButton(onClick = {
-                                                val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-                                                val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
                                                 settingsDialogTitle = "وضعیت شبکه"
-                                                settingsDialogBody = when {
-                                                    caps == null -> "اینترنت متصل نیست."
-                                                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "متصل از طریق Wi‑Fi"
-                                                    caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "متصل از طریق اینترنت همراه"
-                                                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "متصل از طریق Ethernet"
-                                                    else -> "شبکه متصل است."
-                                                }
+                                                settingsDialogBody = runCatching {
+                                                    val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+                                                    val network = cm.activeNetwork
+                                                    val caps = network?.let { cm.getNetworkCapabilities(it) }
+                                                    when {
+                                                        caps == null -> "اینترنت متصل نیست."
+                                                        caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "متصل از طریق Wi‑Fi"
+                                                        caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "متصل از طریق اینترنت همراه"
+                                                        caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "متصل از طریق Ethernet"
+                                                        else -> "شبکه متصل است."
+                                                    }
+                                                }.getOrElse { "امکان خواندن وضعیت شبکه وجود ندارد." }
                                             }, modifier = Modifier.fillMaxWidth()) {
                                                 Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Network Status" else "وضعیت شبکه"); Text("نمایش نوع اتصال اینترنت", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
