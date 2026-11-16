@@ -441,10 +441,10 @@ class ScreenShareService : Service() {
         const val EXTRA_PAIR_CODE = "pair_code"
         private const val CHANNEL_ID = "nexa_screen_share"
         private const val NOTIFICATION_ID = 4101
-        private const val FRAME_INTERVAL_MS = 160L
-        private const val MAX_FRAME_WIDTH = 960
-        private const val JPEG_QUALITY = 50
-        private const val MAX_FRAME_BYTES = 1_000_000
-        private const val MAX_QUEUE_BYTES = 512_000L
+        private const val FRAME_INTERVAL_MS = 200L
+        private const val MAX_FRAME_WIDTH = 720
+        private const val JPEG_QUALITY = 45
+        private const val MAX_FRAME_BYTES = 650_000
+        private const val MAX_QUEUE_BYTES = 256_000L
     }
 }
