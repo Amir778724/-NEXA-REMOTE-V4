@@ -22,6 +22,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import okhttp3.OkHttpClient
@@ -54,6 +55,7 @@ class ScreenShareService : Service() {
     private var reconnectRunnable: Runnable? = null
     private var stopping = false
     private var lockStateReceiver: BroadcastReceiver? = null
+    private var screenWakeLock: PowerManager.WakeLock? = null
     @Volatile private var deviceLocked = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private val client = OkHttpClient.Builder()
@@ -101,6 +103,15 @@ class ScreenShareService : Service() {
         try {
             val manager = getSystemService(MediaProjectionManager::class.java)
             projection = manager.getMediaProjection(resultCode, resultData)
+            // Keep the foreground capture/network worker alive while the display is off.
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+            screenWakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "$packageName:NexaScreenShare"
+            ).apply {
+                setReferenceCounted(false)
+                acquire()
+            }
             val metrics = DisplayMetrics()
             @Suppress("DEPRECATION")
             val display = (getSystemService(WINDOW_SERVICE) as WindowManager).defaultDisplay
@@ -252,6 +263,9 @@ class ScreenShareService : Service() {
                     deviceLocked = lockedNow
                     socket?.let(::sendLockState)
                 }
+                // A sleeping network stack may have dropped the relay socket.
+                // Retry immediately after the owner unlocks the device.
+                if (!lockedNow && socket == null && !stopping) scheduleReconnect()
             }
         }
         val filter = IntentFilter().apply {
@@ -418,6 +432,10 @@ class ScreenShareService : Service() {
         captureHandler = null
         val activeProjection = projection
         projection = null
+        try {
+            screenWakeLock?.let { if (it.isHeld) it.release() }
+        } catch (_: RuntimeException) { }
+        screenWakeLock = null
         if (stopProjection) activeProjection?.stop()
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE)
         else {
