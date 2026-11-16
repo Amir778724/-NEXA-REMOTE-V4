@@ -30,16 +30,64 @@ small{display:block;margin-top:14px;color:#8998ba}
 </main>
 <script>
 const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty');
-let ws=null, lastUrl=null;
+let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='';
 function status(t){statusEl.textContent=t}
-function stop(){if(ws){try{ws.send(JSON.stringify({type:'stop'}));ws.close()}catch{}ws=null}if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false;connect.disabled=false;disconnect.disabled=true}
-connect.onclick=()=>{const c=code.value.trim();if(!/^[0-9]{8}$/.test(c)){status('کد باید ۸ رقم باشد.');return}stop();const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/signal');ws.binaryType='blob';connect.disabled=true;status('در حال اتصال...');
-ws.onopen=()=>ws.send(JSON.stringify({type:'viewer',code:c}));
-ws.onmessage=e=>{if(typeof e.data==='string'){let m;try{m=JSON.parse(e.data)}catch{return}if(m.type==='viewer_ready'){status('متصل شد؛ منتظر تصویر هستیم.');disconnect.disabled=false}else if(m.type==='error'){status(m.message||'خطا در اتصال');stop()}else if(m.type==='host_disconnected'||m.type==='session_expired'){status('اشتراک صفحه پایان یافت.');stop()}return}
-const url=URL.createObjectURL(e.data);screen.src=url;screen.hidden=false;empty.hidden=true;if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=url;};
-ws.onerror=()=>{status('اتصال برقرار نشد؛ آدرس سرویس را بررسی کنید.');stop()};
-ws.onclose=()=>{if(ws){ws=null;connect.disabled=false;disconnect.disabled=true;status('اتصال قطع شد.')}}};
+function clearFrame(){if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false}
+function stop(){
+  manualStop=true;
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+  const old=ws;ws=null;
+  if(old){try{old.send(JSON.stringify({type:'stop'}));old.close()}catch{}}
+  clearFrame();connect.disabled=false;disconnect.disabled=true;
+}
+function scheduleReconnect(){
+  if(manualStop||reconnectTimer)return;
+  const delay=Math.min(1000*Math.pow(2,Math.min(reconnectAttempts,5)),30000);
+  reconnectAttempts++;
+  status('ارتباط ناپایدار است؛ تلاش دوباره تا '+Math.ceil(delay/1000)+' ثانیه دیگر…');
+  connect.disabled=true;disconnect.disabled=false;
+  reconnectTimer=setTimeout(()=>{reconnectTimer=null;if(!manualStop)openSocket()},delay);
+}
+function openSocket(){
+  if(manualStop)return;
+  const proto=location.protocol==='https:'?'wss':'ws';
+  const current=new WebSocket(proto+'://'+location.host+'/signal');
+  ws=current;current.binaryType='blob';connect.disabled=true;status('در حال اتصال دوباره…');
+  current.onopen=()=>{if(ws!==current)return;current.send(JSON.stringify({type:'viewer',code:activeCode}))};
+  current.onmessage=e=>{
+    if(ws!==current)return;
+    if(typeof e.data==='string'){
+      let m;try{m=JSON.parse(e.data)}catch{return}
+      if(m.type==='viewer_ready'){reconnectAttempts=0;status('متصل شد؛ تصویر زنده در حال دریافت است.');disconnect.disabled=false}
+      else if(m.type==='error'){status(m.message||'خطا در اتصال');stop()}
+      else if(m.type==='host_disconnected'){status('گوشی اصلی موقتاً قطع شد؛ در حال تلاش برای اتصال مجدد…')}
+      else if(m.type==='session_expired'){stop();status('زمان این نشست به پایان رسید.')}
+      return;
+    }
+    const nextUrl=URL.createObjectURL(e.data), previousUrl=lastUrl;
+    screen.onload=()=>{if(previousUrl)URL.revokeObjectURL(previousUrl)};
+    screen.src=nextUrl;lastUrl=nextUrl;screen.hidden=false;empty.hidden=true;
+  };
+  current.onerror=()=>{if(ws===current)status('ارتباط با سرور ناپایدار است…')};
+  current.onclose=()=>{
+    if(ws!==current)return;
+    ws=null;
+    if(!manualStop)scheduleReconnect();
+    else{connect.disabled=false;disconnect.disabled=true}
+  };
+}
+connect.onclick=()=>{
+  const c=code.value.trim();
+  if(!/^[0-9]{8}$/.test(c)){status('کد باید ۸ رقم باشد.');return}
+  stop();activeCode=c;manualStop=false;reconnectAttempts=0;openSocket();
+};
 disconnect.onclick=()=>{stop();status('اتصال قطع شد.')};
-screen.addEventListener('click',event=>{if(!ws||ws.readyState!==WebSocket.OPEN)return;const r=screen.getBoundingClientRect();if(!r.width||!r.height)return;const x=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));const y=Math.max(0,Math.min(1,(event.clientY-r.top)/r.height));ws.send(JSON.stringify({type:'tap',x,y}))});
-window.addEventListener('beforeunload',()=>{if(ws)ws.close()});
+screen.addEventListener('click',event=>{
+  if(!ws||ws.readyState!==WebSocket.OPEN)return;
+  const r=screen.getBoundingClientRect();if(!r.width||!r.height)return;
+  const x=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));
+  const y=Math.max(0,Math.min(1,(event.clientY-r.top)/r.height));
+  ws.send(JSON.stringify({type:'tap',x,y}));
+});
+window.addEventListener('beforeunload',()=>{manualStop=true;if(ws)ws.close()});
 </script></body></html>
