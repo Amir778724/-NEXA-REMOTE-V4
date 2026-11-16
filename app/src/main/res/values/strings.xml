@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NEXA Remote</string>
+    <string name="app_name">NEXA CONFIG</string>
     <string name="notification_channel_name">اشتراک صفحه</string>
-    <string name="notification_title">NEXA Remote فعال است</string>
+    <string name="notification_title">NEXA CONFIG فعال است</string>
     <string name="notification_text">اشتراک صفحه با اجازه شما در حال اجراست</string>
     <string name="notification_stop">توقف اشتراک</string>
     <string name="accessibility_service_description">اجازه لمس از راه دور فقط در زمان اشتراک صفحه و با تایید صاحب دستگاه</string>
