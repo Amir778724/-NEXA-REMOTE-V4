@@ -7,7 +7,6 @@ const PORT = Number(process.env.PORT || 8080);
 const rooms = new Map();
 const attempts = new Map();
 const MAX_FRAME_BYTES = 1_500_000;
-const ROOM_TTL_MS = 30 * 60 * 1000;
 
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {
@@ -121,15 +120,6 @@ wss.on("connection", ws => {
 
 setInterval(() => {
   const now = Date.now();
-  for (const [code, room] of rooms) {
-    if (now - room.createdAt > ROOM_TTL_MS) {
-      send(room.host, { type: "session_expired" });
-      send(room.viewer, { type: "session_expired" });
-      room.host.close();
-      room.viewer && room.viewer.close();
-      rooms.delete(code);
-    }
-  }
   for (const ws of wss.clients) {
     if (!ws.isAlive) { ws.terminate(); continue; }
     ws.isAlive = false;
