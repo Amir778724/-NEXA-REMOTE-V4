@@ -26,7 +26,7 @@ small{display:block;margin-top:14px;color:#8998ba}
 <div class="row"><input id="code" inputmode="numeric" maxlength="8" placeholder="کد ۸ رقمی" aria-label="کد اتصال"><button id="connect">اتصال</button><button id="disconnect" disabled>قطع اتصال</button></div>
 <div id="status" role="status">آماده اتصال</div>
 <div class="frame"><img id="screen" alt="تصویر زنده دستگاه" hidden><span id="empty" class="muted">هنوز تصویری دریافت نشده است.</span></div>
-<small>برای لمس از راه دور، روی تصویر کلیک کنید. این قابلیت فقط وقتی کار می‌کند که صاحب دستگاه سرویس دسترس‌پذیری را خودش فعال کرده باشد. نشست‌ها موقت‌اند و پس از ۳۰ دقیقه پایان می‌یابند.</small>
+<small>برای لمس از راه دور، روی تصویر کلیک کنید. این قابلیت فقط وقتی کار می‌کند که صاحب دستگاه سرویس دسترس‌پذیری را خودش فعال کرده باشد. نشست اتصال تا ۴۸ ساعت اعتبار دارد؛ در صورت قطع موقت اینترنت، اتصال با همان کد دوباره برقرار می‌شود.</small>
 </main>
 <script>
 const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty');
