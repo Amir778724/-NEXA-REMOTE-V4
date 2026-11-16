@@ -1,1 +1,1 @@
-/viewer /viewer.html 200
+# No custom redirects. Cloudflare Pages clean URLs serves /viewer from viewer.html.
