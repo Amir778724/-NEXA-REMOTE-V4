@@ -1,0 +1,9 @@
+name = "nexa-viewer"
+compatibility_date = "2026-11-16"
+pages_build_output_dir = "."
+
+# Private Cloudflare service binding: the browser reaches Pages, and Pages
+# forwards /signal to the existing relay without exposing workers.dev to clients.
+[[services]]
+binding = "RELAY"
+service = "nexa-remote-relay"
