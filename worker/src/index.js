@@ -36,7 +36,8 @@ export class RoomHub {
       code: null,
       createdAt: null,
       ip: request.headers.get("CF-Connecting-IP") || "unknown",
-      lastTapAt: 0
+      lastTapAt: 0,
+      locked: false
     });
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -106,7 +107,7 @@ export class RoomHub {
         this.send(ws, { type: "error", message: "کد تکراری است؛ کد تازه بسازید." });
         return;
       }
-      this.save(ws, { ...a, role: "host", code: msg.code, createdAt: now });
+      this.save(ws, { ...a, role: "host", code: msg.code, createdAt: now, locked: false });
       this.send(ws, { type: "host_ready" });
       // A viewer may still be connected after the previous host socket dropped.
       // Complete the pairing handshake again when the host reconnects.
@@ -128,6 +129,17 @@ export class RoomHub {
       this.save(ws, { ...a, role: "viewer", code: msg.code, createdAt: room.createdAt });
       this.send(ws, { type: "viewer_ready" });
       this.send(room.host, { type: "viewer_connected" });
+      const hostState = this.attachment(room.host);
+      this.send(ws, { type: hostState.locked ? "device_locked" : "device_unlocked" });
+      return;
+    }
+
+    if (msg.type === "device_locked" || msg.type === "device_unlocked") {
+      if (a.role !== "host") return;
+      const locked = msg.type === "device_locked";
+      this.save(ws, { ...a, locked });
+      const room = a.code ? this.findRoom(a.code) : null;
+      if (room?.viewer) this.send(room.viewer, { type: locked ? "device_locked" : "device_unlocked" });
       return;
     }
 
