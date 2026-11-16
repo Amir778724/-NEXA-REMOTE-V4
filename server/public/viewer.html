@@ -59,7 +59,7 @@ function openSocket(){
     if(typeof e.data==='string'){
       let m;try{m=JSON.parse(e.data)}catch{return}
       if(m.type==='viewer_ready'){reconnectAttempts=0;status('متصل شد؛ تصویر زنده در حال دریافت است.');disconnect.disabled=false}
-      else if(m.type==='error'){status(m.message||'خطا در اتصال');stop()}
+      else if(m.type==='error'){status((m.message||'خطا در اتصال')+'؛ تلاش دوباره…');const failed=ws;ws=null;try{failed.close()}catch{}scheduleReconnect()}
       else if(m.type==='host_disconnected'){status('گوشی اصلی موقتاً قطع شد؛ در حال تلاش برای اتصال مجدد…')}
       else if(m.type==='session_expired'){stop();status('زمان این نشست به پایان رسید.')}
       return;
