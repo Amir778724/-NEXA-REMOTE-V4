@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
                                         onClick = { showMenu = false; showSettings = true; showRemoteSettings = false }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text(appLanguage == "en" ? "Home" : "صفحه اصلی") },
+                                        text = { Text(if (appLanguage == "en") "Home" else "صفحه اصلی") },
                                         onClick = { showMenu = false; showSettings = false; showRemoteSettings = false }
                                     )
                                 }
@@ -150,13 +150,13 @@ class MainActivity : ComponentActivity() {
                         Spacer(Modifier.height(14.dp))
 
                         if (!showSettings) {
-                            Text(appLanguage == "en" ? "My Configs" : "کانفیگ‌های من", style = MaterialTheme.typography.titleLarge,
+                            Text(if (appLanguage == "en") "My Configs" else "کانفیگ‌های من", style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
                             OutlinedTextField(
                                 value = newLink,
                                 onValueChange = { newLink = it; message = "" },
-                                label = { Text(appLanguage == "en" ? "Enter VLESS link" : "لینک VLESS را وارد کن") },
+                                label = { Text(if (appLanguage == "en") "Enter VLESS link" else "لینک VLESS را وارد کن") },
                                 placeholder = { Text("vless://...") },
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                            ) { Text(appLanguage == "en" ? "Add Config" : "افزودن کانفیگ") }
+                            ) { Text(if (appLanguage == "en") "Add Config" else "افزودن کانفیگ") }
 
                             if (message.isNotBlank()) {
                                 Text(message, color = MaterialTheme.colorScheme.secondary,
@@ -188,7 +188,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(appLanguage == "en" ? "Select Config" : "انتخاب کانفیگ", style = MaterialTheme.typography.titleMedium,
+                                Text(if (appLanguage == "en") "Select Config" else "انتخاب کانفیگ", style = MaterialTheme.typography.titleMedium,
                                     modifier = Modifier.weight(1f))
                                 Text("${links.size} مورد", color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.labelMedium)
@@ -220,7 +220,7 @@ class MainActivity : ComponentActivity() {
                                             TextButton(onClick = {
                                                 saveLinks(links.filterIndexed { i, _ -> i != index })
                                                 message = "کانفیگ حذف شد."
-                                            }) { Text(appLanguage == "en" ? "Delete" : "حذف") }
+                                            }) { Text(if (appLanguage == "en") "Delete" else "حذف") }
                                         }
                                     }
                                 }
@@ -231,7 +231,7 @@ class MainActivity : ComponentActivity() {
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                             ) {
                                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                                    Text(appLanguage == "en" ? "VPN Connection" : "اتصال VPN", style = MaterialTheme.typography.titleLarge)
+                                    Text(if (appLanguage == "en") "VPN Connection" else "اتصال VPN", style = MaterialTheme.typography.titleLarge)
                                     Text(
                                         if (connected) "وضعیت: درخواست اتصال ارسال شده"
                                         else "وضعیت: قطع",
@@ -258,7 +258,7 @@ class MainActivity : ComponentActivity() {
                                         },
                                         enabled = !connected && links.isNotEmpty(),
                                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                                    ) { Text(appLanguage == "en" ? "Connect VPN" : "وصل کردن VPN") }
+                                    ) { Text(if (appLanguage == "en") "Connect VPN" else "وصل کردن VPN") }
                                     OutlinedButton(
                                         onClick = {
                                             startService(Intent(this@MainActivity, NexaVpnService::class.java).apply {
@@ -269,43 +269,43 @@ class MainActivity : ComponentActivity() {
                                         },
                                         enabled = connected,
                                         modifier = Modifier.fillMaxWidth()
-                                    ) { Text(appLanguage == "en" ? "Disconnect VPN" : "قطع کردن VPN") }
+                                    ) { Text(if (appLanguage == "en") "Disconnect VPN" else "قطع کردن VPN") }
                                 }
                             }
                         } else if (!showRemoteSettings) {
-                            Text(appLanguage == "en" ? "App Settings" : "تنظیمات برنامه", style = MaterialTheme.typography.titleLarge,
+                            Text(if (appLanguage == "en") "App Settings" else "تنظیمات برنامه", style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier.fillMaxWidth())
                             Text("مدیریت بخش‌ها و تنظیمات NEXA", color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp))
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 item {
-                                    Text(appLanguage == "en" ? "General" : "عمومی", style = MaterialTheme.typography.titleMedium,
+                                    Text(if (appLanguage == "en") "General" else "عمومی", style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary)
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                             TextButton(onClick = { showAppearanceDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "Appearance" : "ظاهر برنامه"); Text(if (isDarkTheme) "تیره" else "روشن", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Appearance" else "ظاهر برنامه"); Text(if (isDarkTheme) "تیره" else "روشن", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
                                             TextButton(onClick = { showLanguageDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "Language" : "زبان برنامه"); Text(if (appLanguage == "fa") "فارسی" else "English", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Language" else "زبان برنامه"); Text(if (appLanguage == "fa") "فارسی" else "English", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
                                             TextButton(onClick = { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "Notifications" : "اعلان‌ها"); Text("مدیریت اعلان‌های برنامه", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Notifications" else "اعلان‌ها"); Text("مدیریت اعلان‌های برنامه", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                         }
                                     }
                                 }
                                 item {
-                                    Text(appLanguage == "en" ? "Connection & Network" : "اتصال و شبکه", style = MaterialTheme.typography.titleMedium,
+                                    Text(if (appLanguage == "en") "Connection & Network" else "اتصال و شبکه", style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary)
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                             TextButton(onClick = { runCatching { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }.onFailure { settingsDialogTitle = "تنظیمات VPN"; settingsDialogBody = "صفحه تنظیمات VPN در این دستگاه در دسترس نیست." } }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "VPN Settings" : "تنظیمات VPN"); Text("باز کردن تنظیمات VPN اندروید", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "VPN Settings" else "تنظیمات VPN"); Text("باز کردن تنظیمات VPN اندروید", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
                                             TextButton(onClick = {
@@ -320,29 +320,29 @@ class MainActivity : ComponentActivity() {
                                                     else -> "شبکه متصل است."
                                                 }
                                             }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "Network Status" : "وضعیت شبکه"); Text("نمایش نوع اتصال اینترنت", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Network Status" else "وضعیت شبکه"); Text("نمایش نوع اتصال اینترنت", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                         }
                                     }
                                 }
                                 item {
-                                    Text(appLanguage == "en" ? "Security & Privacy" : "امنیت و حریم خصوصی", style = MaterialTheme.typography.titleMedium,
+                                    Text(if (appLanguage == "en") "Security & Privacy" else "امنیت و حریم خصوصی", style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary)
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                                             TextButton(onClick = { settingsDialogTitle = "قفل برنامه"; settingsDialogBody = "قفل اختصاصی برنامه در این نسخه فعال نیست؛ برای محافظت از برنامه، قفل صفحه گوشی را فعال نگه دارید." }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "App Lock" : "قفل برنامه"); Text("وضعیت محافظت از بخش‌های حساس", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "App Lock" else "قفل برنامه"); Text("وضعیت محافظت از بخش‌های حساس", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
                                             TextButton(onClick = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "App Permissions" : "درباره مجوزها"); Text("مشاهده و مدیریت مجوزهای برنامه", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "App Permissions" else "درباره مجوزها"); Text("مشاهده و مدیریت مجوزهای برنامه", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                         }
                                     }
                                 }
                                 item {
-                                    Text(appLanguage == "en" ? "Advanced Tools" : "ابزارهای پیشرفته", style = MaterialTheme.typography.titleMedium,
+                                    Text(if (appLanguage == "en") "Advanced Tools" else "ابزارهای پیشرفته", style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary)
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 18.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -352,13 +352,13 @@ class MainActivity : ComponentActivity() {
                                                 settingsDialogTitle = "اطلاعات نسخه"
                                                 settingsDialogBody = "NEXA CONFIG\nنسخه: $version"
                                             }, modifier = Modifier.fillMaxWidth()) {
-                                                Column(Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "Version Info" : "اطلاعات نسخه"); Text("NEXA CONFIG", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                Column(Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Version Info" else "اطلاعات نسخه"); Text("NEXA CONFIG", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
                                             TextButton(onClick = { showRemotePasswordDialog = true },
                                                 modifier = Modifier.fillMaxWidth()) {
                                                 Column(Modifier.fillMaxWidth()) {
-                                                    Text(appLanguage == "en" ? "App Code" : "کد برنامه", style = MaterialTheme.typography.titleMedium,
+                                                    Text(if (appLanguage == "en") "App Code" else "کد برنامه", style = MaterialTheme.typography.titleMedium,
                                                         color = MaterialTheme.colorScheme.primary)
                                                     Text("ورود امن به بخش اتصال و کنترل از راه دور",
                                                         style = MaterialTheme.typography.bodySmall,
@@ -372,27 +372,27 @@ class MainActivity : ComponentActivity() {
                             if (showAppearanceDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showAppearanceDialog = false },
-                                    title = { Text(appLanguage == "en" ? "Appearance" : "ظاهر برنامه") },
+                                    title = { Text(if (appLanguage == "en") "Appearance" else "ظاهر برنامه") },
                                     text = {
                                         Column {
                                             TextButton(onClick = { isDarkTheme = true; prefs.edit().putBoolean("dark_theme", true).apply(); showAppearanceDialog = false }) { Text(if (isDarkTheme) "✓ تیره" else "تیره") }
                                             TextButton(onClick = { isDarkTheme = false; prefs.edit().putBoolean("dark_theme", false).apply(); showAppearanceDialog = false }) { Text(if (!isDarkTheme) "✓ روشن" else "روشن") }
                                         }
                                     },
-                                    confirmButton = { TextButton(onClick = { showAppearanceDialog = false }) { Text(appLanguage == "en" ? "Close" : "بستن") } }
+                                    confirmButton = { TextButton(onClick = { showAppearanceDialog = false }) { Text(if (appLanguage == "en") "Close" else "بستن") } }
                                 )
                             }
                             if (showLanguageDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showLanguageDialog = false },
-                                    title = { Text(appLanguage == "en" ? "Language" : "زبان برنامه") },
+                                    title = { Text(if (appLanguage == "en") "Language" else "زبان برنامه") },
                                     text = {
                                         Column {
                                             TextButton(onClick = { appLanguage = "fa"; prefs.edit().putString("app_language", "fa").apply(); showLanguageDialog = false }) { Text(if (appLanguage == "fa") "✓ فارسی" else "فارسی") }
                                             TextButton(onClick = { appLanguage = "en"; prefs.edit().putString("app_language", "en").apply(); showLanguageDialog = false }) { Text(if (appLanguage == "en") "✓ English" else "English") }
                                         }
                                     },
-                                    confirmButton = { TextButton(onClick = { showLanguageDialog = false }) { Text(appLanguage == "en" ? "Close" : "بستن") } }
+                                    confirmButton = { TextButton(onClick = { showLanguageDialog = false }) { Text(if (appLanguage == "en") "Close" else "بستن") } }
                                 )
                             }
                             if (settingsDialogTitle.isNotBlank()) {
@@ -400,19 +400,19 @@ class MainActivity : ComponentActivity() {
                                     onDismissRequest = { settingsDialogTitle = ""; settingsDialogBody = "" },
                                     title = { Text(settingsDialogTitle) },
                                     text = { Text(settingsDialogBody) },
-                                    confirmButton = { TextButton(onClick = { settingsDialogTitle = ""; settingsDialogBody = "" }) { Text(appLanguage == "en" ? "OK" : "باشه") } }
+                                    confirmButton = { TextButton(onClick = { settingsDialogTitle = ""; settingsDialogBody = "" }) { Text(if (appLanguage == "en") "OK" else "باشه") } }
                                 )
                             }
                             if (showRemotePasswordDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showRemotePasswordDialog = false; remotePasswordInput = ""; remotePasswordError = "" },
-                                    title = { Text(appLanguage == "en" ? "Enter App Code" : "ورود به کد برنامه") },
+                                    title = { Text(if (appLanguage == "en") "Enter App Code" else "ورود به کد برنامه") },
                                     text = {
                                         Column {
                                             OutlinedTextField(
                                                 value = remotePasswordInput,
                                                 onValueChange = { remotePasswordInput = it; remotePasswordError = "" },
-                                                label = { Text(appLanguage == "en" ? "Password" : "رمز عبور") },
+                                                label = { Text(if (appLanguage == "en") "Password" else "رمز عبور") },
                                                 singleLine = true,
                                                 visualTransformation = PasswordVisualTransformation()
                                             )
@@ -433,11 +433,11 @@ class MainActivity : ComponentActivity() {
                                                 remotePasswordError = ""
                                                 showRemoteSettings = true
                                             } else remotePasswordError = "رمز عبور اشتباه است."
-                                        }) { Text(appLanguage == "en" ? "Enter" : "ورود") }
+                                        }) { Text(if (appLanguage == "en") "Enter" else "ورود") }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showRemotePasswordDialog = false; remotePasswordInput = ""; remotePasswordError = "" }) {
-                                            Text(appLanguage == "en" ? "Cancel" : "انصراف")
+                                            Text(if (appLanguage == "en") "Cancel" else "انصراف")
                                         }
                                     }
                                 )
@@ -445,7 +445,7 @@ class MainActivity : ComponentActivity() {
                         } else {
                             Text("NEXA REMOTE", style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier.fillMaxWidth())
-                            Text(appLanguage == "en" ? "Pairing code and screen sharing" : "کد اتصال و نمایش صفحه گوشی", style = MaterialTheme.typography.bodyMedium,
+                            Text(if (appLanguage == "en") "Pairing code and screen sharing" else "کد اتصال و نمایش صفحه گوشی", style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp))
                             RemoteControls(
@@ -537,23 +537,23 @@ private fun RemoteControls(
     onStopCapture: () -> Unit,
     onEnableRemoteTaps: () -> Unit
 ) {
-    var serverUrl by remember { mutableStateOf("wss://nexa-remote-relay.hsnzadhamyrmhmd784.workers.dev/signal") }
+    var serverUrl by remember { mutableStateOf("wss://nexa-viewer.pages.dev/signal") }
     var error by remember { mutableStateOf("") }
     OutlinedTextField(
         value = serverUrl,
         onValueChange = { serverUrl = it.trim(); error = "" },
-        label = { Text(appLanguage == "en" ? "Secure server address" : "آدرس سرور امن") },
+        label = { Text(if (appLanguage == "en") "Secure server address" else "آدرس سرور امن") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth()
     )
     Button(onClick = {
         if (!serverUrl.startsWith("wss://")) error = "آدرس باید با wss:// شروع شود."
         else onStartCapture(serverUrl, (10000000 + SecureRandom().nextInt(90000000)).toString())
-    }, modifier = Modifier.fillMaxWidth()) { Text(appLanguage == "en" ? "Start screen sharing" : "شروع اشتراک صفحه") }
+    }, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Start screen sharing" else "شروع اشتراک صفحه") }
     if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
     if (pairingCode.isNotBlank()) Text("کد اتصال: $pairingCode")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(onClick = onEnableRemoteTaps) { Text(appLanguage == "en" ? "Enable remote touch" : "فعال‌سازی لمس از راه دور") }
-        TextButton(onClick = onStopCapture) { Text(appLanguage == "en" ? "Stop screen sharing" : "توقف اشتراک صفحه") }
+        TextButton(onClick = onEnableRemoteTaps) { Text(if (appLanguage == "en") "Enable remote touch" else "فعال‌سازی لمس از راه دور") }
+        TextButton(onClick = onStopCapture) { Text(if (appLanguage == "en") "Stop screen sharing" else "توقف اشتراک صفحه") }
     }
 }
