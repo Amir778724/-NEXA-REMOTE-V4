@@ -107,6 +107,13 @@ export class RoomHub {
       }
       this.save(ws, { ...a, role: "host", code: msg.code, createdAt: now });
       this.send(ws, { type: "host_ready" });
+      // A viewer may still be connected after the previous host socket dropped.
+      // Complete the pairing handshake again when the host reconnects.
+      const rejoinedRoom = this.findRoom(msg.code);
+      if (rejoinedRoom.viewer) {
+        this.send(ws, { type: "viewer_connected" });
+        this.send(rejoinedRoom.viewer, { type: "viewer_ready" });
+      }
       await this.state.storage.setAlarm(now + ROOM_TTL_MS);
       return;
     }
