@@ -676,7 +676,7 @@ private fun RemoteControls(
     onStopCapture: () -> Unit,
     onEnableRemoteTaps: () -> Unit
 ) {
-    var serverUrl by remember { mutableStateOf("wss://nexa-viewer.pages.dev/signal") }
+    var serverUrl by remember { mutableStateOf("wss://nexa-remote-relay.hsnzadhamyrmhmd784.workers.dev/signal") }
     var error by remember { mutableStateOf("") }
     OutlinedTextField(
         value = serverUrl,
