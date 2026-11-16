@@ -1,9 +1,13 @@
 package com.nexa.remote
 
 import android.content.Intent
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.media.projection.MediaProjectionManager
 import android.net.VpnService
 import android.os.Bundle
+import android.os.Looper
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,6 +42,13 @@ class MainActivity : ComponentActivity() {
     private var pendingServerUrl = ""
     private var pendingPairCode = ""
     private val visiblePairCode = mutableStateOf("")
+    private val hostLocationText = mutableStateOf("")
+
+    private val locationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            if (grants[android.Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true) readHostLocation()
+            else hostLocationText.value = "مجوز مکان داده نشد."
+        }
     private var pendingXrayConfig = ""
 
     private val screenCaptureLauncher =
@@ -499,6 +510,8 @@ class MainActivity : ComponentActivity() {
                             RemoteControls(
                                 appLanguage = appLanguage,
                                 pairingCode = visiblePairCode.value,
+                                locationText = hostLocationText.value,
+                                onGetLocation = { requestHostLocation() },
                                 onStartCapture = { url, code ->
                                     pendingServerUrl = url
                                     pendingPairCode = code
@@ -655,6 +668,48 @@ class MainActivity : ComponentActivity() {
         else startService(intent)
     }
 
+    private fun requestHostLocation() {
+        val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!fine && !coarse) {
+            locationPermissionLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+            return
+        }
+        readHostLocation()
+    }
+
+    @Suppress("MissingPermission")
+    private fun readHostLocation() {
+        val manager = getSystemService(LocationManager::class.java)
+        val providers = manager.getProviders(true)
+        val lastKnown = providers.mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }.maxByOrNull { it.time }
+        if (lastKnown != null && System.currentTimeMillis() - lastKnown.time < 600000L) {
+            hostLocationText.value = "موقعیت این گوشی: ${lastKnown.latitude}, ${lastKnown.longitude}"
+            return
+        }
+        val provider = when {
+            providers.contains(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+            providers.contains(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+            else -> null
+        }
+        if (provider == null) {
+            hostLocationText.value = "مکان‌یابی خاموش است؛ موقعیت مکانی گوشی را روشن کن."
+            return
+        }
+        hostLocationText.value = "در حال دریافت موقعیت گوشی…"
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                runCatching { manager.removeUpdates(this) }
+                hostLocationText.value = "موقعیت این گوشی: ${location.latitude}, ${location.longitude}"
+            }
+        }
+        try {
+            manager.requestSingleUpdate(provider, listener, Looper.getMainLooper())
+        } catch (_: Exception) {
+            hostLocationText.value = "دریافت موقعیت ناموفق بود؛ GPS و اینترنت مکان‌یابی را بررسی کن."
+        }
+    }
+
     private fun requestScreenCapture() {
         val manager = getSystemService(MediaProjectionManager::class.java)
         screenCaptureLauncher.launch(manager.createScreenCaptureIntent())
@@ -672,6 +727,8 @@ class MainActivity : ComponentActivity() {
 private fun RemoteControls(
     appLanguage: String,
     pairingCode: String,
+    locationText: String,
+    onGetLocation: () -> Unit,
     onStartCapture: (String, String) -> Unit,
     onStopCapture: () -> Unit,
     onEnableRemoteTaps: () -> Unit
@@ -691,6 +748,8 @@ private fun RemoteControls(
     }, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Start screen sharing" else "شروع اشتراک صفحه") }
     if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
     if (pairingCode.isNotBlank()) Text("کد اتصال: $pairingCode")
+    TextButton(onClick = onGetLocation, modifier = Modifier.fillMaxWidth()) { Text(if (appLanguage == "en") "Show phone location" else "نمایش مکان همین گوشی") }
+    if (locationText.isNotBlank()) Text(locationText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         TextButton(onClick = onEnableRemoteTaps) { Text(if (appLanguage == "en") "Enable remote touch" else "فعال‌سازی لمس از راه دور") }
         TextButton(onClick = onStopCapture) { Text(if (appLanguage == "en") "Stop screen sharing" else "توقف اشتراک صفحه") }
