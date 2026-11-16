@@ -449,6 +449,7 @@ class MainActivity : ComponentActivity() {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp))
                             RemoteControls(
+                                appLanguage = appLanguage,
                                 pairingCode = visiblePairCode.value,
                                 onStartCapture = { url, code ->
                                     pendingServerUrl = url
@@ -532,6 +533,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun RemoteControls(
+    appLanguage: String,
     pairingCode: String,
     onStartCapture: (String, String) -> Unit,
     onStopCapture: () -> Unit,
