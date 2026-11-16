@@ -26,6 +26,11 @@ import libXray.LibXray
 import java.security.SecureRandom
 import java.security.MessageDigest
 import kotlinx.coroutines.delay
+import java.net.HttpURLConnection
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.net.Socket
+import java.net.URL
 
 private const val REMOTE_ACCESS_PASSWORD_SHA256 = "32b10a5c90d269fc80b9424a444268725a57ab068bd0d2a47d430a69b114e0d3"
 
@@ -95,6 +100,8 @@ class MainActivity : ComponentActivity() {
                     var newLink by remember { mutableStateOf("") }
                     var selected by remember { mutableIntStateOf(0) }
                     var message by remember { mutableStateOf("") }
+                    var testingIndex by remember { mutableIntStateOf(-1) }
+                    val configTestResults = remember { mutableStateMapOf<Int, String>() }
                     var vpnStatus by remember { mutableStateOf("disconnected") }
                     var vpnError by remember { mutableStateOf("") }
                     LaunchedEffect(Unit) {
@@ -227,9 +234,33 @@ class MainActivity : ComponentActivity() {
                                                 Text(link.substringAfter("://").take(34),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                TextButton(
+                                                    enabled = testingIndex == -1 && vpnStatus != "connected" && vpnStatus != "connecting",
+                                                    onClick = {
+                                                        if (vpnStatus != "disconnected") {
+                                                            configTestResults[index] = "برای تست، ابتدا VPN را قطع کن."
+                                                        } else {
+                                                            testingIndex = index
+                                                            configTestResults[index] = "در حال تست..."
+                                                            testConfigSpeed(link) { result ->
+                                                                runOnUiThread {
+                                                                    configTestResults[index] = result
+                                                                    testingIndex = -1
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                                ) { Text(if (appLanguage == "en") "Test speed" else "تست سرعت") }
+                                                configTestResults[index]?.let {
+                                                    Text(it, style = MaterialTheme.typography.labelSmall,
+                                                        color = if (it.startsWith("خطا")) MaterialTheme.colorScheme.error
+                                                        else MaterialTheme.colorScheme.secondary)
+                                                }
                                             }
                                             TextButton(onClick = {
                                                 saveLinks(links.filterIndexed { i, _ -> i != index })
+                                                configTestResults.remove(index)
                                                 message = "کانفیگ حذف شد."
                                             }) { Text(if (appLanguage == "en") "Delete" else "حذف") }
                                         }
@@ -524,6 +555,95 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             "" to (e.message ?: "خطا در آماده‌سازی کانفیگ")
         }
+    }
+
+    private fun testConfigSpeed(link: String, callback: (String) -> Unit) {
+        Thread {
+            var xrayStarted = false
+            try {
+                val converted = makeXrayConfig(link)
+                if (converted.first.isBlank()) throw IllegalStateException(converted.second)
+
+                val config = JSONObject(converted.first)
+                val socksInbound = JSONObject()
+                    .put("tag", "test-socks")
+                    .put("listen", "127.0.0.1")
+                    .put("port", 10808)
+                    .put("protocol", "socks")
+                    .put("settings", JSONObject().put("auth", "noauth").put("udp", false))
+                config.put("inbounds", JSONArray().put(socksInbound))
+                config.optJSONObject("env")?.remove("xray.tun.fd")
+                config.put("routing", JSONObject()
+                    .put("domainStrategy", "IPIfNonMatch")
+                    .put("rules", JSONArray().put(
+                        JSONObject().put("type", "field")
+                            .put("inboundTag", JSONArray().put("test-socks"))
+                            .put("outboundTag", "proxy")
+                    )))
+
+                val startRequest = JSONObject()
+                    .put("apiVersion", 3)
+                    .put("method", "runXray")
+                    .put("payload", JSONObject().put("xrayJson", config.toString()))
+                val startResponse = JSONObject(LibXray.invoke(startRequest.toString()))
+                if (!startResponse.optBoolean("success")) {
+                    throw IllegalStateException(startResponse.optString("error", "اجرای تست کانفیگ ناموفق بود."))
+                }
+                xrayStarted = true
+
+                var proxyReady = false
+                repeat(40) {
+                    if (!proxyReady) {
+                        proxyReady = runCatching {
+                            Socket().use { it.connect(InetSocketAddress("127.0.0.1", 10808), 250) }
+                            true
+                        }.getOrDefault(false)
+                        if (!proxyReady) Thread.sleep(125)
+                    }
+                }
+                if (!proxyReady) throw IllegalStateException("پروکسی تست راه‌اندازی نشد.")
+
+                val socksProxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress("127.0.0.1", 10808))
+                val connection = (URL("https://speed.cloudflare.com/__down?bytes=500000")
+                    .openConnection(socksProxy) as HttpURLConnection).apply {
+                    connectTimeout = 12000
+                    readTimeout = 20000
+                    requestMethod = "GET"
+                    setRequestProperty("User-Agent", "NEXA-Config-Test/1.0")
+                }
+                try {
+                    val startedAt = System.nanoTime()
+                    val statusCode = connection.responseCode
+                    val firstByteAt = System.nanoTime()
+                    if (statusCode !in 200..299) throw IllegalStateException("سرور تست پاسخ مناسب نداد: $statusCode")
+                    var totalBytes = 0L
+                    connection.inputStream.use { input ->
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            totalBytes += count
+                        }
+                    }
+                    val finishedAt = System.nanoTime()
+                    if (totalBytes == 0L) throw IllegalStateException("داده‌ای دریافت نشد.")
+                    val responseMs = ((firstByteAt - startedAt) / 1_000_000L).coerceAtLeast(1)
+                    val seconds = ((finishedAt - firstByteAt) / 1_000_000_000.0).coerceAtLeast(0.001)
+                    val mbps = totalBytes * 8.0 / seconds / 1_000_000.0
+                    callback("پاسخ: ${responseMs}ms  |  دانلود: ${"%.2f".format(java.util.Locale.US, mbps)} Mbps")
+                } finally {
+                    connection.disconnect()
+                }
+            } catch (e: Exception) {
+                callback("خطا: ${e.message ?: "تست انجام نشد"}")
+            } finally {
+                if (xrayStarted) {
+                    runCatching {
+                        LibXray.invoke(JSONObject().put("apiVersion", 3).put("method", "stopXray").toString())
+                    }
+                }
+            }
+        }.start()
     }
 
     private fun startVpnService(config: String) {
