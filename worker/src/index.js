@@ -143,6 +143,13 @@ export class RoomHub {
       return;
     }
 
+    if (msg.type === "refresh_stream") {
+      const room = a.code ? this.findRoom(a.code) : null;
+      if (!room || room.viewer !== ws || !room.host) return;
+      this.send(room.host, { type: "reconnect_requested" });
+      return;
+    }
+
     if (msg.type === "tap") {
       const room = a.code ? this.findRoom(a.code) : null;
       if (!room || room.viewer !== ws) return;

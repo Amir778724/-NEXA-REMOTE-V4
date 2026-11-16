@@ -181,6 +181,12 @@ class ScreenShareService : Service() {
                             viewerConnected = false
                             updateNotification("بیننده قطع شد؛ کد: $roomCode")
                         }
+                        "reconnect_requested" -> {
+                            if (socket === webSocket && !stopping) {
+                                updateNotification("درخواست تازه‌سازی دریافت شد؛ اتصال دوباره برقرار می‌شود")
+                                webSocket.close(4001, "Viewer requested refresh")
+                            }
+                        }
                         "tap" -> {
                             if (viewerConnected) {
                                 RemoteAccessibilityService.performRemoteTap(
@@ -259,7 +265,7 @@ class ScreenShareService : Service() {
     private fun scheduleReconnect() {
         if (stopping || projection == null || activeServerUrl.isBlank()) return
         reconnectRunnable?.let(mainHandler::removeCallbacks)
-        val delay = (1_000L shl reconnectAttempt.coerceAtMost(5)).coerceAtMost(30_000L)
+        val delay = (2_000L shl reconnectAttempt.coerceAtMost(4)).coerceAtMost(30_000L)
         reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
         val task = Runnable {
             if (!stopping && projection != null && socket == null) {

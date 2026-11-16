@@ -23,14 +23,14 @@ small{display:block;margin-top:14px;color:#8998ba}
 <body><main>
 <h1>NEXA REMOTE</h1>
 <p class="muted">برای مشاهده صفحه، کد ۸ رقمی را از برنامه‌ای که صاحب دستگاه با اجازه خودش اجرا کرده وارد کنید.</p>
-<div class="row"><input id="code" inputmode="numeric" maxlength="8" placeholder="کد ۸ رقمی" aria-label="کد اتصال"><button id="connect">اتصال</button><button id="disconnect" disabled>قطع اتصال</button></div>
+<div class="row"><input id="code" inputmode="numeric" maxlength="8" placeholder="کد ۸ رقمی" aria-label="کد اتصال"><button id="connect">اتصال</button><button id="disconnect" disabled>قطع اتصال</button><button id="refresh" disabled>تازه‌سازی تصویر</button></div>
 <div id="status" role="status">آماده اتصال</div>
 <div class="frame"><img id="screen" alt="تصویر زنده دستگاه" hidden><span id="empty" class="muted">هنوز تصویری دریافت نشده است.</span></div>
 <small>برای لمس از راه دور، روی تصویر کلیک کنید. این قابلیت فقط وقتی کار می‌کند که صاحب دستگاه سرویس دسترس‌پذیری را خودش فعال کرده باشد. نشست اتصال تا ۴۸ ساعت اعتبار دارد؛ در صورت قطع موقت اینترنت، اتصال با همان کد دوباره برقرار می‌شود.</small>
 </main>
 <script>
-const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty');
-let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='', deviceLocked=false;
+const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), refresh=document.querySelector('#refresh'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty');
+let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='', deviceLocked=false, lastFrameAt=0, viewerReadyAt=0, lastRefreshAt=0;
 function status(t){statusEl.textContent=t}
 function clearFrame(){if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false}
 function stop(){
@@ -38,7 +38,7 @@ function stop(){
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const old=ws;ws=null;
   if(old){try{old.send(JSON.stringify({type:'stop'}));old.close()}catch{}}
-  clearFrame();connect.disabled=false;disconnect.disabled=true;
+  clearFrame();connect.disabled=false;disconnect.disabled=true;refresh.disabled=true;
 }
 function scheduleReconnect(){
   if(manualStop||reconnectTimer)return;
@@ -58,7 +58,7 @@ function openSocket(){
     if(ws!==current)return;
     if(typeof e.data==='string'){
       let m;try{m=JSON.parse(e.data)}catch{return}
-      if(m.type==='viewer_ready'){reconnectAttempts=0;status('متصل شد؛ تصویر زنده در حال دریافت است.');disconnect.disabled=false}
+      if(m.type==='viewer_ready'){reconnectAttempts=0;viewerReadyAt=Date.now();status('متصل شد؛ تصویر زنده در حال دریافت است.');disconnect.disabled=false;refresh.disabled=false}
       else if(m.type==='error'){status((m.message||'خطا در اتصال')+'؛ تلاش دوباره…');const failed=ws;ws=null;try{failed.close()}catch{}scheduleReconnect()}
       else if(m.type==='host_disconnected'){status('گوشی اصلی موقتاً قطع شده؛ اتصال بیننده حفظ می‌شود و با برگشت گوشی اصلی خودکار ادامه می‌یابد.')}
       else if(m.type==='device_locked'){deviceLocked=true;status('گوشی اصلی قفل است؛ اتصال برقرار است. لمس از راه دور تا باز شدن قفل غیرفعال می‌ماند.')}
@@ -66,7 +66,7 @@ function openSocket(){
       else if(m.type==='session_expired'){stop();status('زمان این نشست به پایان رسید.')}
       return;
     }
-    const nextUrl=URL.createObjectURL(e.data), previousUrl=lastUrl;
+    lastFrameAt=Date.now();const nextUrl=URL.createObjectURL(e.data), previousUrl=lastUrl;
     screen.onload=()=>{if(previousUrl)URL.revokeObjectURL(previousUrl)};
     screen.src=nextUrl;lastUrl=nextUrl;screen.hidden=false;empty.hidden=true;
   };
@@ -84,6 +84,26 @@ connect.onclick=()=>{
   stop();activeCode=c;manualStop=false;reconnectAttempts=0;openSocket();
 };
 disconnect.onclick=()=>{stop();status('اتصال قطع شد.')};
+refresh.onclick=()=>{
+  if(manualStop)return;
+  if(ws&&ws.readyState===WebSocket.OPEN){
+    ws.send(JSON.stringify({type:'refresh_stream'}));
+    lastRefreshAt=Date.now();
+    status('درخواست تازه‌سازی تصویر ارسال شد…');
+  }else if(!reconnectTimer){
+    openSocket();
+  }
+};
+setInterval(()=>{
+  if(manualStop||deviceLocked||!ws||ws.readyState!==WebSocket.OPEN)return;
+  const reference=lastFrameAt||viewerReadyAt;
+  const now=Date.now();
+  if(reference&&now-reference>15000&&now-lastRefreshAt>20000){
+    lastRefreshAt=now;
+    ws.send(JSON.stringify({type:'refresh_stream'}));
+    status('تصویر متوقف شده؛ درخواست تازه‌سازی ارسال شد…');
+  }
+},5000);
 screen.addEventListener('click',event=>{
   if(!ws||ws.readyState!==WebSocket.OPEN||deviceLocked)return;
   const r=screen.getBoundingClientRect();if(!r.width||!r.height)return;
