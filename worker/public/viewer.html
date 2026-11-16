@@ -15,6 +15,8 @@ input{background:#0c1428;color:white;flex:1;min-width:180px;letter-spacing:4px;t
 button{background:#6d8cff;color:#081126;border:0;font-weight:700;cursor:pointer}
 button:disabled{opacity:.45;cursor:not-allowed}
 #status{padding:10px 12px;border-radius:10px;background:#0d162b;color:#c6d2ee}
+#location{display:none;margin-top:10px;padding:12px;border-radius:10px;background:#0d162b;color:#c6d2ee;line-height:1.8}
+#location a{color:#9eb3ff}
 .frame{margin-top:16px;background:#05080f;min-height:240px;border-radius:14px;display:grid;place-items:center;overflow:hidden;touch-action:none;overscroll-behavior:contain}
 img{display:block;max-width:100%;max-height:70vh;object-fit:contain;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 small{display:block;margin-top:14px;color:#8998ba}
@@ -25,16 +27,18 @@ small{display:block;margin-top:14px;color:#8998ba}
 <p class="muted">برای مشاهده صفحه، کد ۸ رقمی را از برنامه‌ای که صاحب دستگاه با اجازه خودش اجرا کرده وارد کنید.</p>
 <div class="row"><input id="code" inputmode="numeric" maxlength="8" placeholder="کد ۸ رقمی" aria-label="کد اتصال"><button id="connect">اتصال</button><button id="disconnect" disabled>قطع اتصال</button><button id="refresh" disabled>تازه‌سازی تصویر</button></div>
 <div id="status" role="status">آماده اتصال</div>
+<div id="location" aria-live="polite"></div>
 <div class="frame"><img id="screen" alt="تصویر زنده دستگاه" hidden><span id="empty" class="muted">هنوز تصویری دریافت نشده است.</span></div>
 <small>برای لمس از راه دور، روی تصویر کلیک کنید. این قابلیت فقط وقتی کار می‌کند که صاحب دستگاه سرویس دسترس‌پذیری را خودش فعال کرده باشد. نشست اتصال تا ۴۸ ساعت اعتبار دارد؛ در صورت قطع موقت اینترنت، اتصال با همان کد دوباره برقرار می‌شود.</small>
 </main>
 <script>
-const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), refresh=document.querySelector('#refresh'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty');
+const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), refresh=document.querySelector('#refresh'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty'), locationEl=document.querySelector('#location');
 let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='', deviceLocked=false, lastFrameAt=0, viewerReadyAt=0, lastRefreshAt=0, activePointer=null, suppressClickUntil=0;
 function status(t){statusEl.textContent=t}
 function clearFrame(){if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false}
 function stop(){
   manualStop=true;deviceLocked=false;
+  locationEl.style.display='none';locationEl.textContent='';
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const old=ws;ws=null;
   if(old){try{old.send(JSON.stringify({type:'stop'}));old.close()}catch{}}
@@ -63,6 +67,14 @@ function openSocket(){
       else if(m.type==='host_disconnected'){status('گوشی اصلی موقتاً قطع شده؛ اتصال بیننده حفظ می‌شود و با برگشت گوشی اصلی خودکار ادامه می‌یابد.')}
       else if(m.type==='device_locked'){deviceLocked=true;status('گوشی اصلی قفل است؛ اتصال برقرار است. لمس از راه دور تا باز شدن قفل غیرفعال می‌ماند.')}
       else if(m.type==='device_unlocked'){deviceLocked=false;status('قفل گوشی اصلی باز شد؛ تصویر و کنترل در دسترس است.')}
+      else if(m.type==='host_location'){
+        const lat=Number(m.latitude),lon=Number(m.longitude);
+        if(Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180){
+          const link=document.createElement('a');link.href='https://www.google.com/maps?q='+encodeURIComponent(lat+','+lon);link.target='_blank';link.rel='noopener noreferrer';link.textContent='نمایش روی نقشه';
+          locationEl.replaceChildren(document.createTextNode('موقعیت گوشی کددهنده: '+lat.toFixed(6)+', '+lon.toFixed(6)+' — '),link);
+          locationEl.style.display='block';
+        }
+      }
       else if(m.type==='session_expired'){stop();status('زمان این نشست به پایان رسید.')}
       return;
     }
