@@ -5,12 +5,16 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.media.Image
 import android.media.ImageReader
+import android.app.KeyguardManager
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -49,6 +53,8 @@ class ScreenShareService : Service() {
     private var reconnectAttempt = 0
     private var reconnectRunnable: Runnable? = null
     private var stopping = false
+    private var lockStateReceiver: BroadcastReceiver? = null
+    @Volatile private var deviceLocked = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private val client = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
@@ -141,6 +147,7 @@ class ScreenShareService : Service() {
                 captureHandler
             )
             RemoteAccessibilityService.setSessionActive(true)
+            registerLockStateReceiver()
             connectRelay(serverUrl)
         } catch (_: SecurityException) {
             stopCapture()
@@ -158,6 +165,7 @@ class ScreenShareService : Service() {
                 if (socket !== webSocket || stopping) return
                 reconnectAttempt = 0
                 webSocket.send(JSONObject().put("type", "host").put("code", roomCode).toString())
+                sendLockState(webSocket)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -166,6 +174,7 @@ class ScreenShareService : Service() {
                         "host_ready" -> updateNotification("کد اتصال: $roomCode")
                         "viewer_connected" -> {
                             viewerConnected = true
+                            sendLockState(webSocket)
                             updateNotification("بیننده متصل شد؛ کد: $roomCode")
                         }
                         "viewer_disconnected" -> {
@@ -208,6 +217,43 @@ class ScreenShareService : Service() {
                 if (!stopping && projection != null) scheduleReconnect()
             }
         })
+    }
+
+    private fun registerLockStateReceiver() {
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        deviceLocked = keyguard.isKeyguardLocked
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val lockedNow = when (intent?.action) {
+                    Intent.ACTION_SCREEN_OFF -> true
+                    Intent.ACTION_USER_PRESENT -> false
+                    Intent.ACTION_SCREEN_ON -> keyguard.isKeyguardLocked
+                    else -> keyguard.isKeyguardLocked
+                }
+                if (lockedNow != deviceLocked) {
+                    deviceLocked = lockedNow
+                    socket?.let(::sendLockState)
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(receiver, filter)
+        }
+        lockStateReceiver = receiver
+    }
+
+    private fun sendLockState(target: WebSocket) {
+        if (target !== socket || stopping) return
+        val type = if (deviceLocked) "device_locked" else "device_unlocked"
+        target.send(JSONObject().put("type", type).toString())
     }
 
     private fun scheduleReconnect() {
@@ -337,6 +383,10 @@ class ScreenShareService : Service() {
         reconnectRunnable = null
         viewerConnected = false
         RemoteAccessibilityService.setSessionActive(false)
+        lockStateReceiver?.let { receiver ->
+            try { unregisterReceiver(receiver) } catch (_: IllegalArgumentException) {}
+        }
+        lockStateReceiver = null
         try { socket?.send(JSONObject().put("type", "stop").toString()) } catch (_: Exception) {}
         socket?.close(1000, "Owner stopped sharing")
         socket = null
