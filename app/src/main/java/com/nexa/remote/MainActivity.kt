@@ -25,6 +25,7 @@ import org.json.JSONObject
 import libXray.LibXray
 import java.security.SecureRandom
 import java.security.MessageDigest
+import kotlinx.coroutines.delay
 
 private const val REMOTE_ACCESS_PASSWORD_SHA256 = "32b10a5c90d269fc80b9424a444268725a57ab068bd0d2a47d430a69b114e0d3"
 
@@ -94,7 +95,17 @@ class MainActivity : ComponentActivity() {
                     var newLink by remember { mutableStateOf("") }
                     var selected by remember { mutableIntStateOf(0) }
                     var message by remember { mutableStateOf("") }
-                    var connected by remember { mutableStateOf(false) }
+                    var vpnStatus by remember { mutableStateOf("disconnected") }
+                    var vpnError by remember { mutableStateOf("") }
+                    LaunchedEffect(Unit) {
+                        val vpnPrefs = getSharedPreferences("nexa_vpn_state", MODE_PRIVATE)
+                        while (true) {
+                            vpnStatus = vpnPrefs.getString("status", "disconnected") ?: "disconnected"
+                            vpnError = vpnPrefs.getString("error", "") ?: ""
+                            delay(700)
+                        }
+                    }
+                    val connected = vpnStatus == "connected" || vpnStatus == "connecting"
                     var showMenu by remember { mutableStateOf(false) }
                     var showSettings by remember { mutableStateOf(false) }
                     var showRemoteSettings by remember { mutableStateOf(false) }
@@ -233,9 +244,13 @@ class MainActivity : ComponentActivity() {
                                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                                     Text(if (appLanguage == "en") "VPN Connection" else "اتصال VPN", style = MaterialTheme.typography.titleLarge)
                                     Text(
-                                        if (connected) "وضعیت: درخواست اتصال ارسال شده"
-                                        else "وضعیت: قطع",
-                                        color = if (connected) MaterialTheme.colorScheme.primary
+                                        when (vpnStatus) {
+                                            "connected" -> "وضعیت: متصل"
+                                            "connecting" -> "وضعیت: در حال اتصال..."
+                                            else -> if (vpnError.isNotBlank()) "وضعیت: خطا - $vpnError" else "وضعیت: قطع"
+                                        },
+                                        color = if (vpnStatus == "connected") MaterialTheme.colorScheme.primary
+                                                else if (vpnError.isNotBlank()) MaterialTheme.colorScheme.error
                                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(top = 4.dp)
                                     )
@@ -251,8 +266,9 @@ class MainActivity : ComponentActivity() {
                                                     val consent = VpnService.prepare(this@MainActivity)
                                                     if (consent != null) vpnConsentLauncher.launch(consent)
                                                     else startVpnService(pendingXrayConfig)
-                                                    connected = true
-                                                    message = "درخواست اتصال ارسال شد."
+                                                    vpnStatus = "connecting"
+                                                    vpnError = ""
+                                                    message = "درخواست اتصال ارسال شد؛ منتظر تأیید سرویس هستیم."
                                                 }
                                             }
                                         },
@@ -264,7 +280,8 @@ class MainActivity : ComponentActivity() {
                                             startService(Intent(this@MainActivity, NexaVpnService::class.java).apply {
                                                 action = NexaVpnService.ACTION_STOP
                                             })
-                                            connected = false
+                                            vpnStatus = "disconnected"
+                                            vpnError = ""
                                             message = "درخواست قطع اتصال ارسال شد."
                                         },
                                         enabled = connected,
