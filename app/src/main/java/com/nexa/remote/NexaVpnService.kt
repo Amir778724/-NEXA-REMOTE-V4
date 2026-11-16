@@ -8,12 +8,13 @@ import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import libXray.LibXray
+import libXray.DialerController
 import org.json.JSONObject
 
 class NexaVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
 
-    private val dialerController = object : LibXray.DialerController {
+    private val dialerController = object : DialerController {
         override fun protectFd(fd: Int): Boolean = this@NexaVpnService.protect(fd)
     }
 
