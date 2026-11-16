@@ -360,9 +360,6 @@ class MainActivity : ComponentActivity() {
                                                 Column(Modifier.fillMaxWidth()) {
                                                     Text(if (appLanguage == "en") "App Code" else "کد برنامه", style = MaterialTheme.typography.titleMedium,
                                                         color = MaterialTheme.colorScheme.primary)
-                                                    Text("ورود امن به بخش اتصال و کنترل از راه دور",
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
                                             }
                                         }
