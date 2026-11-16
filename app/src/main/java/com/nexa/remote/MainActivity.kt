@@ -155,8 +155,8 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
                             Text("رفتن به صفحه اتصال")
                         }
-                        } else {
-                        Text("اتصال", style = MaterialTheme.typography.titleLarge)
+                        } else if (page == 1) {
+                        Text("اتصال VPN", style = MaterialTheme.typography.titleLarge)
                         Text(
                             if (selected in links.indices) "کانفیگ انتخاب‌شده: ${selected + 1}" else "هنوز کانفیگی انتخاب نشده",
                             style = MaterialTheme.typography.bodyMedium
