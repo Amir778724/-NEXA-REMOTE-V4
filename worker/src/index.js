@@ -1,7 +1,4 @@
 const MAX_FRAME_BYTES = 1_500_000;
-// Keep an approved pairing session available across an overnight network outage.
-const ROOM_TTL_MS = 48 * 60 * 60 * 1000;
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -116,7 +113,6 @@ export class RoomHub {
         this.send(ws, { type: "viewer_connected" });
         this.send(rejoinedRoom.viewer, { type: "viewer_ready" });
       }
-      await this.state.storage.setAlarm(now + ROOM_TTL_MS);
       return;
     }
 
@@ -219,22 +215,6 @@ export class RoomHub {
     this.detach(ws, 1011, "WebSocket error");
   }
 
-  async alarm() {
-    const now = Date.now();
-    for (const ws of this.sockets()) {
-      const a = this.attachment(ws);
-      if (a.role === "host" && a.createdAt && now - a.createdAt >= ROOM_TTL_MS) {
-        const room = this.findRoom(a.code);
-        this.send(room.host, { type: "session_expired" });
-        this.send(room.viewer, { type: "session_expired" });
-        if (room.viewer) { try { room.viewer.close(1000, "Session expired"); } catch {} }
-        try { ws.close(1000, "Session expired"); } catch {}
-      }
-    }
-    const hosts = this.sockets().map(ws => this.attachment(ws)).filter(a => a.role === "host" && a.createdAt);
-    if (hosts.length) {
-      const next = Math.min(...hosts.map(a => a.createdAt + ROOM_TTL_MS));
-      await this.state.storage.setAlarm(Math.max(now + 1000, next));
-    }
-  }
+  // No fixed session lifetime: sessions end when a participant disconnects or stops sharing.
+  async alarm() {}
 }
