@@ -153,10 +153,10 @@ export class RoomHub {
     if (!a.code) return;
     const room = this.findRoom(a.code);
     if (a.role === "host" && room.host === ws) {
+      // Keep the viewer socket alive during a temporary host/network outage.
+      // When the host reconnects with the same pairing code, the handshake
+      // below notifies both sides and frame delivery resumes without re-entry.
       this.send(room.viewer, { type: "host_disconnected" });
-      if (room.viewer) {
-        try { room.viewer.close(code, "Host ended session"); } catch {}
-      }
     } else if (a.role === "viewer" && room.viewer === ws) {
       this.send(room.host, { type: "viewer_disconnected" });
     }
