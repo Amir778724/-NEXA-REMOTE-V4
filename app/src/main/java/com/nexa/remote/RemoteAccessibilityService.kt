@@ -3,6 +3,8 @@ package com.nexa.remote
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.util.DisplayMetrics
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
 /**
@@ -41,14 +43,21 @@ class RemoteAccessibilityService : AccessibilityService() {
             if (now - lastTapAt < 120L) return
             lastTapAt = now
 
-            val metrics = service.resources.displayMetrics
-            val x = (normalizedX * metrics.widthPixels).toFloat().coerceIn(1f, metrics.widthPixels - 1f)
-            val y = (normalizedY * metrics.heightPixels).toFloat().coerceIn(1f, metrics.heightPixels - 1f)
+            // Use the full physical display bounds, matching MediaProjection's capture space.
+            val metrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            (service.getSystemService(WindowManager::class.java).defaultDisplay).getRealMetrics(metrics)
+            val width = metrics.widthPixels.coerceAtLeast(2)
+            val height = metrics.heightPixels.coerceAtLeast(2)
+            val x = (normalizedX * (width - 1)).toFloat().coerceIn(0f, (width - 1).toFloat())
+            val y = (normalizedY * (height - 1)).toFloat().coerceIn(0f, (height - 1).toFloat())
+            // A zero-length line makes the intended tap explicit to GestureDescription.
             val path = Path().apply {
                 moveTo(x, y)
+                lineTo(x, y)
             }
             val gesture = GestureDescription.Builder()
-                .addStroke(GestureDescription.StrokeDescription(path, 0, 70))
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 100))
                 .build()
             service.dispatchGesture(gesture, null, null)
         }
