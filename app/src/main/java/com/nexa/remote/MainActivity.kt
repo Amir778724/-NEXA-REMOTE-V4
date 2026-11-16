@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("NEXA", style = MaterialTheme.typography.headlineMedium,
+                                Text("NEXA CONFIG", style = MaterialTheme.typography.headlineMedium,
                                     color = MaterialTheme.colorScheme.primary)
                                 Text(
                                     if (showRemoteSettings) "تنظیمات  /  ریموت" else if (showSettings) "تنظیمات" else "CONFIG  •  VPN",
