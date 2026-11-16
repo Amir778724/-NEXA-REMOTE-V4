@@ -45,6 +45,11 @@ class ScreenShareService : Service() {
     private var captureThread: HandlerThread? = null
     private var captureHandler: Handler? = null
     private var roomCode: String = ""
+    private var activeServerUrl: String = ""
+    private var reconnectAttempt = 0
+    private var reconnectRunnable: Runnable? = null
+    private var stopping = false
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val client = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -69,6 +74,9 @@ class ScreenShareService : Service() {
         if (projection != null) return
         val serverUrl = intent.getStringExtra(EXTRA_SERVER_URL)?.trim().orEmpty()
         roomCode = intent.getStringExtra(EXTRA_PAIR_CODE)?.trim().orEmpty()
+        activeServerUrl = serverUrl
+        stopping = false
+        reconnectAttempt = 0
         if (!serverUrl.startsWith("wss://") || !roomCode.matches(Regex("[0-9]{8}"))) {
             stopSelf()
             return
@@ -95,9 +103,13 @@ class ScreenShareService : Service() {
 
             captureThread = HandlerThread("NexaScreenFrames").also { it.start() }
             captureHandler = Handler(captureThread!!.looper)
+            // Bound capture resolution to avoid expensive full-screen pixel conversion.
+            val captureWidth = metrics.widthPixels.coerceAtMost(MAX_FRAME_WIDTH).coerceAtLeast(1)
+            val captureHeight = (metrics.heightPixels.toFloat() * captureWidth /
+                metrics.widthPixels.coerceAtLeast(1)).toInt().coerceAtLeast(1)
             val reader = ImageReader.newInstance(
-                metrics.widthPixels.coerceAtLeast(1),
-                metrics.heightPixels.coerceAtLeast(1),
+                captureWidth,
+                captureHeight,
                 PixelFormat.RGBA_8888,
                 2
             )
@@ -120,8 +132,8 @@ class ScreenShareService : Service() {
 
             virtualDisplay = projection?.createVirtualDisplay(
                 "NEXA-Remote-Capture",
-                metrics.widthPixels.coerceAtLeast(1),
-                metrics.heightPixels.coerceAtLeast(1),
+                captureWidth,
+                captureHeight,
                 metrics.densityDpi,
                 0,
                 reader.surface,
@@ -143,6 +155,8 @@ class ScreenShareService : Service() {
         val request = Request.Builder().url(serverUrl).build()
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (socket !== webSocket || stopping) return
+                reconnectAttempt = 0
                 webSocket.send(JSONObject().put("type", "host").put("code", roomCode).toString())
             }
 
@@ -180,14 +194,34 @@ class ScreenShareService : Service() {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (socket !== webSocket) return
+                socket = null
                 viewerConnected = false
-                updateNotification("ارتباط با سرور قطع شد")
+                updateNotification("ارتباط ناپایدار است؛ تلاش برای اتصال دوباره…")
+                scheduleReconnect()
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (socket !== webSocket) return
+                socket = null
                 viewerConnected = false
+                if (!stopping && projection != null) scheduleReconnect()
             }
         })
+    }
+
+    private fun scheduleReconnect() {
+        if (stopping || projection == null || activeServerUrl.isBlank()) return
+        reconnectRunnable?.let(mainHandler::removeCallbacks)
+        val delay = (1_000L shl reconnectAttempt.coerceAtMost(5)).coerceAtMost(30_000L)
+        reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
+        val task = Runnable {
+            if (!stopping && projection != null && socket == null) {
+                connectRelay(activeServerUrl)
+            }
+        }
+        reconnectRunnable = task
+        mainHandler.postDelayed(task, delay)
     }
 
     private fun forwardFrame(image: Image) {
@@ -298,6 +332,9 @@ class ScreenShareService : Service() {
     private fun stopCapture() = releaseCapture(stopProjection = true)
 
     private fun releaseCapture(stopProjection: Boolean) {
+        stopping = true
+        reconnectRunnable?.let(mainHandler::removeCallbacks)
+        reconnectRunnable = null
         viewerConnected = false
         RemoteAccessibilityService.setSessionActive(false)
         try { socket?.send(JSONObject().put("type", "stop").toString()) } catch (_: Exception) {}
@@ -338,8 +375,8 @@ class ScreenShareService : Service() {
         private const val NOTIFICATION_ID = 4101
         private const val FRAME_INTERVAL_MS = 160L
         private const val MAX_FRAME_WIDTH = 960
-        private const val JPEG_QUALITY = 55
-        private const val MAX_FRAME_BYTES = 1_500_000
-        private const val MAX_QUEUE_BYTES = 2_000_000L
+        private const val JPEG_QUALITY = 50
+        private const val MAX_FRAME_BYTES = 1_000_000
+        private const val MAX_QUEUE_BYTES = 512_000L
     }
 }
