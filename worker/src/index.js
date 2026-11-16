@@ -134,6 +134,20 @@ export class RoomHub {
       return;
     }
 
+    if (msg.type === "host_location") {
+      if (a.role !== "host") return;
+      const latitude = Number(msg.latitude), longitude = Number(msg.longitude);
+      const timestamp = Number(msg.timestamp);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+          latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 ||
+          !Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > 15 * 60 * 1000) return;
+      const room = a.code ? this.findRoom(a.code) : null;
+      if (room?.host === ws && room.viewer) {
+        this.send(room.viewer, { type: "host_location", latitude, longitude, timestamp });
+      }
+      return;
+    }
+
     if (msg.type === "device_locked" || msg.type === "device_unlocked") {
       if (a.role !== "host") return;
       const locked = msg.type === "device_locked";
