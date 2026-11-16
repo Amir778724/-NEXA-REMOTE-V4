@@ -27,6 +27,8 @@ class NexaVpnService : VpnService() {
                     stopSelf()
                     return START_NOT_STICKY
                 }
+                getSharedPreferences("nexa_vpn_state", MODE_PRIVATE).edit()
+                    .putString("status", "connecting").putString("error", "").apply()
                 startForeground(NOTIFICATION_ID, notification())
                 Thread { startVpn(config) }.start()
             }
@@ -56,10 +58,13 @@ class NexaVpnService : VpnService() {
             if (!response.optBoolean("success")) {
                 throw IllegalStateException(response.optString("error", "Xray اجرا نشد."))
             }
+            getSharedPreferences("nexa_vpn_state", MODE_PRIVATE).edit()
+                .putString("status", "connected").putString("error", "").apply()
         } catch (e: Exception) {
             stopVpn()
             val prefs = getSharedPreferences("nexa_vpn_state", MODE_PRIVATE)
-            prefs.edit().putString("error", e.message ?: "خطای اتصال").apply()
+            prefs.edit().putString("status", "disconnected")
+                .putString("error", e.message ?: "خطای اتصال").apply()
         }
     }
 
@@ -70,6 +75,8 @@ class NexaVpnService : VpnService() {
         }
         runCatching { tun?.close() }
         tun = null
+        getSharedPreferences("nexa_vpn_state", MODE_PRIVATE).edit()
+            .putString("status", "disconnected").apply()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
