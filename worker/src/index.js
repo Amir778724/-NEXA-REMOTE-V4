@@ -79,6 +79,8 @@ export class RoomHub {
         try { ws.close(1009, "Frame too large"); } catch {}
         return;
       }
+      // Drop stale frames instead of allowing a slow viewer to accumulate latency.
+      if ((room.viewer.bufferedAmount || 0) > 750_000) return;
       try { room.viewer.send(message); } catch {}
       return;
     }
