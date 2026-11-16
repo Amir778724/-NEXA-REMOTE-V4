@@ -27,28 +27,22 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK and NDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-      - name: Install Android NDK
-        run: sdkmanager "ndk;27.2.12479018"
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.27.3"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Build libXray Android library
+      - name: Download verified libXray Android release
         run: |
-          git clone --depth 1 --branch v26.11.9 https://github.com/XTLS/libXray.git /tmp/libXray
-          cd /tmp/libXray
-          python3 build/main.py android
-          mkdir -p "$GITHUB_WORKSPACE/app/libs"
-          cp libXray.aar "$GITHUB_WORKSPACE/app/libs/libXray.aar"
+          set -euo pipefail
+          curl -fL --retry 3 \
+            https://github.com/XTLS/libXray/releases/download/v26.11.9/libxray-android.zip \
+            -o /tmp/libxray-android.zip
+          echo "1b1aa12124a7112af983a6cea74c77f27aadc6b650acf3c5a57019619ba9fa48  /tmp/libxray-android.zip" | sha256sum -c -
+          mkdir -p /tmp/libxray-release app/libs
+          unzip -q /tmp/libxray-android.zip -d /tmp/libxray-release
+          AAR="$(find /tmp/libxray-release -type f -name libXray.aar -print -quit)"
+          test -n "$AAR"
+          cp "$AAR" app/libs/libXray.aar
+          test -s app/libs/libXray.aar
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
