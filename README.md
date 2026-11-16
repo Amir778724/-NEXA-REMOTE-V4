@@ -40,3 +40,16 @@ GitHub Actions builds a debug APK on pushes to `main` and uploads it as an artif
 ## Current limitations
 
 Remote input currently supports **single taps only**. Swipe, keyboard input, file transfer, unattended access, and background/hidden operation are not implemented. The Android owner must keep the app's visible consent session active and can stop it at any time.
+
+
+## NEXA VIEW on a free Pages subdomain (Iran-friendly routing test)
+
+The browser viewer can be deployed separately on Cloudflare Pages at `https://nexa-viewer.pages.dev/viewer`. The Pages Function at `/signal` forwards WebSocket upgrades to the existing `nexa-remote-relay` Worker through a private Cloudflare Service Binding, so the browser and Android app do not need to contact the public `workers.dev` hostname directly.
+
+1. In Cloudflare, open **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**.
+2. Connect this repository: `Amir778724/-NEXA-REMOTE-V4`.
+3. Set the project name to `nexa-viewer`, production branch to `main`, and the root directory to `web` (framework preset: None; build command empty; output directory: `.`).
+4. Ensure the Pages project uses `web/wrangler.toml` as its Wrangler configuration. It declares the `RELAY` Service Binding to the existing Worker named `nexa-remote-relay`. Both projects must be in the same Cloudflare account. If the binding is not picked up automatically, add it in Pages → Settings → Bindings → Add → Service binding, variable name `RELAY`, service `nexa-remote-relay`, then redeploy.
+5. After the first successful deployment, open `https://nexa-viewer.pages.dev/viewer` from the viewer phone. The Android app's default relay address is now `wss://nexa-viewer.pages.dev/signal`.
+
+This uses Cloudflare's free Pages subdomain and does not require buying a domain. Availability of `pages.dev` on Iranian networks is not guaranteed; test it from the target mobile network. The old `workers.dev` URL remains the fallback until the new Pages site and Service Binding are deployed and tested.
