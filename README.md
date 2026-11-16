@@ -16,7 +16,7 @@ Android app and temporary relay for owner-approved screen sharing and remote inp
 
 Each phone connects independently to the same HTTPS/WSS relay. The phones do **not** need to use the same VPN configuration. They each need a working route to the relay; if either network blocks the relay hostname, the session cannot connect.
 
-The relay does not store screen frames. Pairing rooms are held in Durable Object connection state and expire after 48 hours. Use HTTPS/WSS only.
+The relay does not store screen frames. Pairing rooms remain active while the host connection is active; there is no fixed 48-hour expiry. A session ends when the host stops sharing or disconnects. Use HTTPS/WSS only.
 
 ## Cloudflare deployment
 
