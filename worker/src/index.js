@@ -1,5 +1,6 @@
 const MAX_FRAME_BYTES = 1_500_000;
-const ROOM_TTL_MS = 30 * 60 * 1000;
+// Keep an approved pairing session available across an overnight network outage.
+const ROOM_TTL_MS = 48 * 60 * 60 * 1000;
 
 export default {
   async fetch(request, env) {
