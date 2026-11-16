@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
                     var selected by remember { mutableIntStateOf(0) }
                     var message by remember { mutableStateOf("") }
                     var connected by remember { mutableStateOf(false) }
+                    var page by remember { mutableIntStateOf(0) }
 
                     fun saveLinks(values: List<String>) {
                         links = values
@@ -86,6 +87,11 @@ class MainActivity : ComponentActivity() {
                         Text("NEXA", style = MaterialTheme.typography.headlineLarge)
                         Text("REMOTE  •  VPN", color = MaterialTheme.colorScheme.secondary)
                         Spacer(Modifier.height(18.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { page = 0 }, modifier = Modifier.weight(1f), enabled = page != 0) { Text("۱. کانفیگ‌ها") }
+                            Button(onClick = { page = 1 }, modifier = Modifier.weight(1f), enabled = page != 1) { Text("۲. اتصال") }
+                        }
+                        if (page == 0) {
                         Text("کانفیگ‌های من", style = MaterialTheme.typography.titleLarge)
                         OutlinedTextField(
                             value = newLink,
@@ -144,6 +150,16 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                        Button(onClick = { page = 1 }, enabled = links.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                            Text("رفتن به صفحه اتصال")
+                        }
+                        } else {
+                        Text("اتصال", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            if (selected in links.indices) "کانفیگ انتخاب‌شده: ${selected + 1}" else "هنوز کانفیگی انتخاب نشده",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                         Text(
                             if (connected) "وضعیت: در حال اتصال" else "وضعیت: قطع",
                             color = if (connected) MaterialTheme.colorScheme.primary
@@ -197,10 +213,11 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                         Text(
-                            "کانفیگ‌ها فقط روی همین گوشی ذخیره می‌شوند. برای اتصال، اجازه VPN اندروید را تأیید کن.",
+                            "برای اتصال VPN اجازه اندروید را تأیید کن. اشتراک صفحه ریموت نیز با اجازه جداگانه شروع می‌شود.",
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 8.dp)
                         )
+                        }
                     }
                 }
             }
