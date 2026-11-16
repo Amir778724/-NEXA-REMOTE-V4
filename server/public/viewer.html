@@ -34,7 +34,7 @@ let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=
 function status(t){statusEl.textContent=t}
 function clearFrame(){if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false}
 function stop(){
-  manualStop=true;
+  manualStop=true;deviceLocked=false;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const old=ws;ws=null;
   if(old){try{old.send(JSON.stringify({type:'stop'}));old.close()}catch{}}
@@ -61,6 +61,8 @@ function openSocket(){
       if(m.type==='viewer_ready'){reconnectAttempts=0;status('متصل شد؛ تصویر زنده در حال دریافت است.');disconnect.disabled=false}
       else if(m.type==='error'){status((m.message||'خطا در اتصال')+'؛ تلاش دوباره…');const failed=ws;ws=null;try{failed.close()}catch{}scheduleReconnect()}
       else if(m.type==='host_disconnected'){status('گوشی اصلی موقتاً قطع شده؛ اتصال بیننده حفظ می‌شود و با برگشت گوشی اصلی خودکار ادامه می‌یابد.')}
+      else if(m.type==='device_locked'){deviceLocked=true;status('گوشی اصلی قفل است؛ اتصال برقرار است. لمس از راه دور تا باز شدن قفل غیرفعال می‌ماند.')}
+      else if(m.type==='device_unlocked'){deviceLocked=false;status('قفل گوشی اصلی باز شد؛ تصویر و کنترل در دسترس است.')}
       else if(m.type==='session_expired'){stop();status('زمان این نشست به پایان رسید.')}
       return;
     }
