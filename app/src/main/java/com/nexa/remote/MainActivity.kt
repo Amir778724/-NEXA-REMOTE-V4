@@ -9,6 +9,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
@@ -90,6 +93,8 @@ class MainActivity : ComponentActivity() {
                     var showRemotePasswordDialog by remember { mutableStateOf(false) }
                     var remotePasswordInput by remember { mutableStateOf("") }
                     var remotePasswordError by remember { mutableStateOf("") }
+                    var settingsDialogTitle by remember { mutableStateOf("") }
+                    var settingsDialogBody by remember { mutableStateOf("") }
 
                     fun saveLinks(values: List<String>) {
                         links = values
@@ -269,24 +274,16 @@ class MainActivity : ComponentActivity() {
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                            Column {
-                                                Text("ظاهر برنامه")
-                                                Text("رنگ‌بندی تیره و چیدمان NEXA",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = { settingsDialogTitle = "ظاهر برنامه"; settingsDialogBody = "تم فعلی برنامه تیره است. تغییر تم در این نسخه پشتیبانی نمی‌شود." }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("ظاهر برنامه"); Text("رنگ‌بندی تیره و چیدمان NEXA", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
-                                            Column {
-                                                Text("زبان برنامه")
-                                                Text("فارسی", style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = { settingsDialogTitle = "زبان برنامه"; settingsDialogBody = "زبان فعال برنامه فارسی است. زبان دیگری در این نسخه ارائه نشده است." }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("زبان برنامه"); Text("فارسی", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
-                                            Column {
-                                                Text("اعلان‌ها")
-                                                Text("وضعیت اعلان‌های اتصال و سرویس‌ها",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("اعلان‌ها"); Text("مدیریت اعلان‌های برنامه", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                         }
                                     }
@@ -297,18 +294,23 @@ class MainActivity : ComponentActivity() {
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                            Column {
-                                                Text("تنظیمات VPN")
-                                                Text("مدیریت اتصال و کانفیگ‌های ذخیره‌شده",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = { runCatching { startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) }.onFailure { settingsDialogTitle = "تنظیمات VPN"; settingsDialogBody = "صفحه تنظیمات VPN در این دستگاه در دسترس نیست." } }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("تنظیمات VPN"); Text("باز کردن تنظیمات VPN اندروید", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
-                                            Column {
-                                                Text("وضعیت شبکه")
-                                                Text("اطلاعات اتصال اینترنت دستگاه",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = {
+                                                val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+                                                val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+                                                settingsDialogTitle = "وضعیت شبکه"
+                                                settingsDialogBody = when {
+                                                    caps == null -> "اینترنت متصل نیست."
+                                                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "متصل از طریق Wi‑Fi"
+                                                    caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "متصل از طریق اینترنت همراه"
+                                                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "متصل از طریق Ethernet"
+                                                    else -> "شبکه متصل است."
+                                                }
+                                            }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("وضعیت شبکه"); Text("نمایش نوع اتصال اینترنت", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                         }
                                     }
@@ -319,18 +321,12 @@ class MainActivity : ComponentActivity() {
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                            Column {
-                                                Text("قفل برنامه")
-                                                Text("محافظت از بخش‌های حساس",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = { settingsDialogTitle = "قفل برنامه"; settingsDialogBody = "قفل اختصاصی برنامه در این نسخه فعال نیست؛ برای محافظت از برنامه، قفل صفحه گوشی را فعال نگه دارید." }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("قفل برنامه"); Text("وضعیت محافظت از بخش‌های حساس", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
-                                            Column {
-                                                Text("درباره مجوزها")
-                                                Text("مجوزها فقط با تأیید صاحب دستگاه فعال می‌شوند",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("درباره مجوزها"); Text("مشاهده و مدیریت مجوزهای برنامه", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                         }
                                     }
@@ -341,11 +337,12 @@ class MainActivity : ComponentActivity() {
                                     Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 18.dp),
                                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                            Column {
-                                                Text("اطلاعات نسخه")
-                                                Text("NEXA Remote V4",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            TextButton(onClick = {
+                                                val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName ?: "نامشخص" }.getOrDefault("نامشخص")
+                                                settingsDialogTitle = "اطلاعات نسخه"
+                                                settingsDialogBody = "NEXA CONFIG\nنسخه: $version"
+                                            }, modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) { Text("اطلاعات نسخه"); Text("NEXA CONFIG", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                             }
                                             Divider()
                                             TextButton(onClick = { showRemotePasswordDialog = true },
@@ -361,6 +358,14 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                            }
+                            if (settingsDialogTitle.isNotBlank()) {
+                                AlertDialog(
+                                    onDismissRequest = { settingsDialogTitle = ""; settingsDialogBody = "" },
+                                    title = { Text(settingsDialogTitle) },
+                                    text = { Text(settingsDialogBody) },
+                                    confirmButton = { TextButton(onClick = { settingsDialogTitle = ""; settingsDialogBody = "" }) { Text("باشه") } }
+                                )
                             }
                             if (showRemotePasswordDialog) {
                                 AlertDialog(
