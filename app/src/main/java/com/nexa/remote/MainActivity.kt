@@ -89,7 +89,8 @@ class MainActivity : ComponentActivity() {
                         Spacer(Modifier.height(18.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { page = 0 }, modifier = Modifier.weight(1f), enabled = page != 0) { Text("۱. کانفیگ‌ها") }
-                            Button(onClick = { page = 1 }, modifier = Modifier.weight(1f), enabled = page != 1) { Text("۲. اتصال") }
+                            Button(onClick = { page = 1 }, modifier = Modifier.weight(1f), enabled = page != 1) { Text("۲. اتصال VPN") }
+                            Button(onClick = { page = 2 }, modifier = Modifier.weight(1f), enabled = page != 2) { Text("۳. ریموت") }
                         }
                         if (page == 0) {
                         Text("کانفیگ‌های من", style = MaterialTheme.typography.titleLarge)
@@ -197,8 +198,12 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("قطع اتصال") }
 
-                        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                        Text("NEXA REMOTE", style = MaterialTheme.typography.titleMedium)
+                        Button(onClick = { page = 2 }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                            Text("رفتن به صفحه ریموت")
+                        }
+                        } else {
+                        Text("NEXA REMOTE", style = MaterialTheme.typography.titleLarge)
+                        Text("اشتراک صفحه و کنترل از راه دور", style = MaterialTheme.typography.bodyMedium)
                         RemoteControls(
                             pairingCode = visiblePairCode.value,
                             onStartCapture = { url, code ->
@@ -212,11 +217,9 @@ class MainActivity : ComponentActivity() {
                                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                             }
                         )
-                        Text(
-                            "برای اتصال VPN اجازه اندروید را تأیید کن. اشتراک صفحه ریموت نیز با اجازه جداگانه شروع می‌شود.",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                        Button(onClick = { page = 0 }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                            Text("بازگشت به کانفیگ‌ها")
+                        }
                         }
                     }
                 }
