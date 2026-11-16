@@ -16,10 +16,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import org.json.JSONArray
 import org.json.JSONObject
 import libXray.LibXray
 import java.security.SecureRandom
+
+private const val REMOTE_ACCESS_PASSWORD = "" // بعداً با رمز انتخابی کاربر تنظیم می‌شود.
 
 class MainActivity : ComponentActivity() {
     private var pendingServerUrl = ""
@@ -83,6 +86,9 @@ class MainActivity : ComponentActivity() {
                     var showMenu by remember { mutableStateOf(false) }
                     var showSettings by remember { mutableStateOf(false) }
                     var showRemoteSettings by remember { mutableStateOf(false) }
+                    var showRemotePasswordDialog by remember { mutableStateOf(false) }
+                    var remotePasswordInput by remember { mutableStateOf("") }
+                    var remotePasswordError by remember { mutableStateOf("") }
 
                     fun saveLinks(values: List<String>) {
                         links = values
@@ -251,24 +257,147 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         } else if (!showRemoteSettings) {
-                            Text("تنظیمات", style = MaterialTheme.typography.titleLarge,
+                            Text("تنظیمات برنامه", style = MaterialTheme.typography.titleLarge,
                                 modifier = Modifier.fillMaxWidth())
-                            Spacer(Modifier.height(12.dp))
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                            ) {
-                                TextButton(
-                                    onClick = { showRemoteSettings = true },
-                                    modifier = Modifier.fillMaxWidth().padding(12.dp)
-                                ) {
-                                    Column(Modifier.fillMaxWidth()) {
-                                        Text("Remote", style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.primary)
-                                        Text("کد اتصال و نمایش صفحه گوشی",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("مدیریت بخش‌ها و تنظیمات NEXA", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp))
+                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                item {
+                                    Text("عمومی", style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary)
+                                    Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                            Column {
+                                                Text("ظاهر برنامه")
+                                                Text("رنگ‌بندی تیره و چیدمان NEXA",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Divider()
+                                            Column {
+                                                Text("زبان برنامه")
+                                                Text("فارسی", style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Divider()
+                                            Column {
+                                                Text("اعلان‌ها")
+                                                Text("وضعیت اعلان‌های اتصال و سرویس‌ها",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
                                     }
                                 }
+                                item {
+                                    Text("اتصال و شبکه", style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary)
+                                    Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                            Column {
+                                                Text("تنظیمات VPN")
+                                                Text("مدیریت اتصال و کانفیگ‌های ذخیره‌شده",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Divider()
+                                            Column {
+                                                Text("وضعیت شبکه")
+                                                Text("اطلاعات اتصال اینترنت دستگاه",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                    }
+                                }
+                                item {
+                                    Text("امنیت و حریم خصوصی", style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary)
+                                    Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                            Column {
+                                                Text("قفل برنامه")
+                                                Text("محافظت از بخش‌های حساس",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Divider()
+                                            Column {
+                                                Text("درباره مجوزها")
+                                                Text("مجوزها فقط با تأیید صاحب دستگاه فعال می‌شوند",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                    }
+                                }
+                                item {
+                                    Text("ابزارهای پیشرفته", style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary)
+                                    Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 18.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                            Column {
+                                                Text("اطلاعات نسخه")
+                                                Text("NEXA Remote V4",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                            Divider()
+                                            TextButton(onClick = { showRemotePasswordDialog = true },
+                                                modifier = Modifier.fillMaxWidth()) {
+                                                Column(Modifier.fillMaxWidth()) {
+                                                    Text("کد برنامه", style = MaterialTheme.typography.titleMedium,
+                                                        color = MaterialTheme.colorScheme.primary)
+                                                    Text("ورود امن به بخش اتصال و کنترل از راه دور",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (showRemotePasswordDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showRemotePasswordDialog = false; remotePasswordInput = ""; remotePasswordError = "" },
+                                    title = { Text("ورود به کد برنامه") },
+                                    text = {
+                                        Column {
+                                            OutlinedTextField(
+                                                value = remotePasswordInput,
+                                                onValueChange = { remotePasswordInput = it; remotePasswordError = "" },
+                                                label = { Text("رمز عبور") },
+                                                singleLine = true,
+                                                visualTransformation = PasswordVisualTransformation()
+                                            )
+                                            if (remotePasswordError.isNotBlank()) {
+                                                Text(remotePasswordError, color = MaterialTheme.colorScheme.error,
+                                                    style = MaterialTheme.typography.bodySmall)
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            if (REMOTE_ACCESS_PASSWORD.isBlank()) {
+                                                remotePasswordError = "رمز هنوز تنظیم نشده؛ بعد از انتخاب رمز، نسخه جدید ساخته می‌شود."
+                                            } else if (remotePasswordInput == REMOTE_ACCESS_PASSWORD) {
+                                                showRemotePasswordDialog = false
+                                                remotePasswordInput = ""
+                                                remotePasswordError = ""
+                                                showRemoteSettings = true
+                                            } else remotePasswordError = "رمز عبور اشتباه است."
+                                        }) { Text("ورود") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showRemotePasswordDialog = false; remotePasswordInput = ""; remotePasswordError = "" }) {
+                                            Text("انصراف")
+                                        }
+                                    }
+                                )
                             }
                         } else {
                             Text("NEXA REMOTE", style = MaterialTheme.typography.titleLarge,
