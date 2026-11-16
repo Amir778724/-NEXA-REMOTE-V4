@@ -520,6 +520,7 @@ class MainActivity : ComponentActivity() {
                                     pendingServerUrl = url
                                     pendingPairCode = code
                                     visiblePairCode.value = code
+                                    getSharedPreferences("nexa_remote_location", MODE_PRIVATE).edit().clear().apply()
                                     requestLocationThenScreenCapture()
                                 },
                                 onStopCapture = { stopScreenCapture() },
@@ -684,13 +685,22 @@ class MainActivity : ComponentActivity() {
         requestScreenCapture()
     }
 
+    private fun publishHostLocation(location: Location) {
+        hostLocationText.value = "موقعیت این گوشی: ${location.latitude}, ${location.longitude}"
+        getSharedPreferences("nexa_remote_location", MODE_PRIVATE).edit()
+            .putString("latitude", location.latitude.toString())
+            .putString("longitude", location.longitude.toString())
+            .putLong("timestamp", System.currentTimeMillis())
+            .apply()
+    }
+
     @Suppress("MissingPermission")
     private fun readHostLocation() {
         val manager = getSystemService(LocationManager::class.java)
         val providers = manager.getProviders(true)
         val lastKnown = providers.mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }.maxByOrNull { it.time }
         if (lastKnown != null && System.currentTimeMillis() - lastKnown.time < 600000L) {
-            hostLocationText.value = "موقعیت این گوشی: ${lastKnown.latitude}, ${lastKnown.longitude}"
+            publishHostLocation(lastKnown)
             return
         }
         val provider = when {
@@ -706,7 +716,7 @@ class MainActivity : ComponentActivity() {
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) {
                 runCatching { manager.removeUpdates(this) }
-                hostLocationText.value = "موقعیت این گوشی: ${location.latitude}, ${location.longitude}"
+                publishHostLocation(location)
             }
         }
         try {
