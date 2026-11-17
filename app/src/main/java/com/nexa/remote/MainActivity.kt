@@ -96,9 +96,16 @@ class MainActivity : ComponentActivity() {
                     putExtra(ScreenShareService.EXTRA_SERVER_URL, pendingServerUrl)
                     putExtra(ScreenShareService.EXTRA_PAIR_CODE, pendingPairCode)
                 }
+                getSharedPreferences("nexa_remote_session", MODE_PRIVATE).edit()
+                    .putString("server_url", pendingServerUrl)
+                    .putString("pair_code", pendingPairCode)
+                    .apply()
                 if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent)
                 else startService(serviceIntent)
-            } else visiblePairCode.value = ""
+            } else {
+                visiblePairCode.value = ""
+                getSharedPreferences("nexa_remote_session", MODE_PRIVATE).edit().clear().apply()
+            }
         }
 
     private val vpnConsentLauncher =
@@ -108,6 +115,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (ScreenShareService.isSharingActive()) {
+            visiblePairCode.value = ScreenShareService.currentPairCode()
+        }
         val prefs = getSharedPreferences("nexa_user_configs", MODE_PRIVATE)
         val saved = prefs.getString("links", "[]") ?: "[]"
         val initialLinks = runCatching {
@@ -880,6 +890,7 @@ class MainActivity : ComponentActivity() {
             action = ScreenShareService.ACTION_STOP
         })
         visiblePairCode.value = ""
+        getSharedPreferences("nexa_remote_session", MODE_PRIVATE).edit().clear().apply()
     }
 }
 
