@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "NEXA-REMOTE-V4"
-include(":app")
+include(":app", ":remote-viewer")
