@@ -5,5 +5,5 @@
     <string name="notification_title">NEXA CONFIG فعال است</string>
     <string name="notification_text">اشتراک صفحه با اجازه شما در حال اجراست</string>
     <string name="notification_stop">توقف اشتراک</string>
-    <string name="accessibility_service_description">اجازه لمس از راه دور فقط در زمان اشتراک صفحه و با تایید صاحب دستگاه</string>
+    <string name="accessibility_service_description">اجازه لمس و ورود متن از راه دور فقط در زمان اشتراک صفحه و با تایید صاحب دستگاه؛ متن واردشده خوانده یا ذخیره نمی‌شود</string>
 </resources>
