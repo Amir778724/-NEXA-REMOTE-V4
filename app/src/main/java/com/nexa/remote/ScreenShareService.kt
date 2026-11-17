@@ -226,6 +226,16 @@ class ScreenShareService : Service() {
                                 )
                             }
                         }
+                        "type_text" -> {
+                            if (viewerConnected && !deviceLocked) {
+                                val value = JSONObject(text).optString("text")
+                                val accepted = RemoteAccessibilityService.performRemoteText(value)
+                                webSocket.send(
+                                    JSONObject().put("type", "text_input_result")
+                                        .put("success", accepted).toString()
+                                )
+                            }
+                        }
                         "session_expired", "host_disconnected" -> {
                             stopCapture()
                             stopSelf()
