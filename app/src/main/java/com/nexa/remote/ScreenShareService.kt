@@ -361,7 +361,10 @@ class ScreenShareService : Service() {
     }
 
     private fun forwardFrame(image: Image) {
-        if (!viewerConnected || socket == null) return
+        if (!viewerConnected) return
+        val activeSocket = socket ?: return
+        // Avoid spending CPU encoding a frame when the network is already behind.
+        if (activeSocket.queueSize() >= MAX_QUEUE_BYTES) return
         val now = System.currentTimeMillis()
         if (now - lastFrameAt < FRAME_INTERVAL_MS) return
         lastFrameAt = now
@@ -396,8 +399,10 @@ class ScreenShareService : Service() {
             bitmap.recycle()
             val bytes = output.toByteArray()
             output.close()
-            if (bytes.size <= MAX_FRAME_BYTES && (socket?.queueSize() ?: Long.MAX_VALUE) < MAX_QUEUE_BYTES) {
-                socket?.send(ByteString.of(*bytes))
+            // Send only to the same live socket and never build a backlog of old frames.
+            if (bytes.size <= MAX_FRAME_BYTES && socket === activeSocket &&
+                activeSocket.queueSize() < MAX_QUEUE_BYTES) {
+                activeSocket.send(ByteString.of(*bytes))
             }
         } catch (_: Exception) {
             // A dropped frame is preferable to interrupting the active session.
@@ -519,10 +524,10 @@ class ScreenShareService : Service() {
         const val EXTRA_PAIR_CODE = "pair_code"
         private const val CHANNEL_ID = "nexa_screen_share"
         private const val NOTIFICATION_ID = 4101
-        private const val FRAME_INTERVAL_MS = 150L
-        private const val MAX_FRAME_WIDTH = 640
-        private const val JPEG_QUALITY = 42
-        private const val MAX_FRAME_BYTES = 650_000
-        private const val MAX_QUEUE_BYTES = 256_000L
+        private const val FRAME_INTERVAL_MS = 80L
+        private const val MAX_FRAME_WIDTH = 720
+        private const val JPEG_QUALITY = 50
+        private const val MAX_FRAME_BYTES = 900_000
+        private const val MAX_QUEUE_BYTES = 128_000L
     }
 }
