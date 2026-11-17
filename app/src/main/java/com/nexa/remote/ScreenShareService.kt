@@ -105,6 +105,10 @@ class ScreenShareService : Service() {
         try {
             val manager = getSystemService(MediaProjectionManager::class.java)
             projection = manager.getMediaProjection(resultCode, resultData)
+            synchronized(SESSION_LOCK) {
+                sharingActive = true
+                activePairCode = roomCode
+            }
             // Keep the foreground capture/network worker alive while the display is off.
             val powerManager = getSystemService(POWER_SERVICE) as PowerManager
             screenWakeLock = powerManager.newWakeLock(
@@ -492,6 +496,10 @@ class ScreenShareService : Service() {
         captureHandler = null
         val activeProjection = projection
         projection = null
+        synchronized(SESSION_LOCK) {
+            sharingActive = false
+            activePairCode = ""
+        }
         try {
             screenWakeLock?.let { if (it.isHeld) it.release() }
         } catch (_: RuntimeException) { }
@@ -511,6 +519,15 @@ class ScreenShareService : Service() {
     }
 
     companion object {
+        private val SESSION_LOCK = Any()
+        @Volatile private var sharingActive = false
+        @Volatile private var activePairCode = ""
+
+        fun isSharingActive(): Boolean = synchronized(SESSION_LOCK) { sharingActive }
+        fun currentPairCode(): String = synchronized(SESSION_LOCK) {
+            if (sharingActive) activePairCode else ""
+        }
+
         const val ACTION_START = "com.nexa.remote.action.START_CAPTURE"
         const val ACTION_STOP = "com.nexa.remote.action.STOP_CAPTURE"
         const val EXTRA_RESULT_CODE = "result_code"
