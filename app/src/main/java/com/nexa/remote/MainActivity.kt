@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
 
                     fun importConfigText(raw: String) {
                         val supported = setOf("vless", "vmess", "ss", "trojan", "socks", "socks5", "http", "https", "wireguard", "wg", "hysteria2", "hy2")
-                        val candidates = raw.replace("\\r", "\\n")
+                        val candidates = raw.replace("\r", "\n")
                             .split(Regex("[\\n\\t ]+"))
                             .map { it.trim().trim(',', ';', '"', '\\'', '(', ')', '[', ']') }
                             .filter { candidate ->
