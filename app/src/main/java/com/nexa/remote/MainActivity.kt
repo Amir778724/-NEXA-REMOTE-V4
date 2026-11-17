@@ -210,9 +210,9 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { newLink = it; message = "" },
                                 label = { Text(if (appLanguage == "en") "Enter VLESS link" else "لینک VLESS را وارد کن") },
                                 placeholder = { Text("vless://...") },
-                                modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp),
                                 minLines = 2,
-                                maxLines = 3,
+                                maxLines = 6,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(
                                     onDone = { keyboardController?.hide() }
