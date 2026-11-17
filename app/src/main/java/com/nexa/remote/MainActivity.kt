@@ -24,6 +24,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import org.json.JSONArray
 import org.json.JSONObject
 import libXray.LibXray
@@ -125,6 +129,7 @@ class MainActivity : ComponentActivity() {
                 )
             ) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    val keyboardController = LocalSoftwareKeyboardController.current
                     var links by remember { mutableStateOf(initialLinks) }
                     var newLink by remember { mutableStateOf("") }
                     var selected by remember { mutableIntStateOf(0) }
@@ -205,8 +210,13 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { newLink = it; message = "" },
                                 label = { Text(if (appLanguage == "en") "Enter VLESS link" else "لینک VLESS را وارد کن") },
                                 placeholder = { Text("vless://...") },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp),
                                 minLines = 2,
+                                maxLines = 3,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { keyboardController?.hide() }
+                                ),
                                 shape = MaterialTheme.shapes.medium
                             )
                             Button(
