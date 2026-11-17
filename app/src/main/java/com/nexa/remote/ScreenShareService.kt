@@ -230,9 +230,18 @@ class ScreenShareService : Service() {
                                 )
                             }
                         }
-                        "session_expired", "host_disconnected" -> {
+                        "session_expired" -> {
+                            // The relay explicitly expires the room; stop the capture service.
                             stopCapture()
                             stopSelf()
+                        }
+                        "host_disconnected" -> {
+                            // A dropped host socket can be a temporary network outage.
+                            // Keep MediaProjection alive while the service reconnects with
+                            // the same code; the viewer socket remains in the relay room.
+                            viewerConnected = false
+                            updateNotification("گوشی میزبان موقتاً قطع شد؛ تلاش برای اتصال دوباره…")
+                            scheduleReconnect()
                         }
                         "error" -> {
                             updateNotification("خطای اتصال؛ اشتراک را متوقف کنید")
