@@ -206,6 +206,67 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    fun pingFromResult(result: String?): Long? =
+                        result?.let { Regex("""پاسخ:\s*(\d+)ms""").find(it)?.groupValues?.get(1)?.toLongOrNull() }
+
+                    fun sortConfigsByPing() {
+                        if (testingIndex != -1) return
+                        if (links.isEmpty()) {
+                            message = "اول کانفیگ اضافه کن."
+                            return
+                        }
+                        val previousSelected = links.getOrNull(selected)
+                        val sorted = links.withIndex().sortedWith(
+                            compareBy<IndexedValue<String>> { item ->
+                                when {
+                                    pingFromResult(configTestResults[item.index]) != null -> 0
+                                    configTestResults[item.index] == null -> 1
+                                    else -> 2
+                                }
+                            }.thenBy { item -> pingFromResult(configTestResults[item.index]) ?: Long.MAX_VALUE }
+                        )
+                        val reorderedResults = sorted.mapIndexedNotNull { newIndex, item ->
+                            configTestResults[item.index]?.let { newIndex to it }
+                        }
+                        saveLinks(sorted.map { it.value })
+                        selected = sorted.indexOfFirst { it.value == previousSelected }.coerceAtLeast(0)
+                        configTestResults.clear()
+                        reorderedResults.forEach { (index, result) -> configTestResults[index] = result }
+                        message = "کانفیگ‌های سالم بر اساس پینگ مرتب شدند؛ موارد ناموفق به انتهای لیست رفتند."
+                    }
+
+                    fun testNextConfig(configs: List<String>, index: Int) {
+                        if (index >= configs.size) {
+                            testingIndex = -1
+                            message = "تست همه کانفیگ‌ها تمام شد. حالا می‌توانی بر اساس پینگ مرتب کنی."
+                            return
+                        }
+                        testingIndex = index
+                        configTestResults[index] = "در حال تست..."
+                        testConfigSpeed(configs[index]) { result ->
+                            runOnUiThread {
+                                configTestResults[index] = result
+                                testNextConfig(configs, index + 1)
+                            }
+                        }
+                    }
+
+                    fun testAllConfigs() {
+                        if (testingIndex != -1) return
+                        if (vpnStatus != "disconnected") {
+                            message = "برای تست همه کانفیگ‌ها، ابتدا VPN را قطع کن."
+                            return
+                        }
+                        if (links.isEmpty()) {
+                            message = "اول کانفیگ اضافه کن."
+                            return
+                        }
+                        configTestResults.clear()
+                        links.indices.forEach { configTestResults[it] = "در انتظار تست..." }
+                        message = "تست کانفیگ‌ها به‌ترتیب شروع شد..."
+                        testNextConfig(links.toList(), 0)
+                    }
+
                     Column(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -321,6 +382,29 @@ class MainActivity : ComponentActivity() {
                                 Text("${links.size} مورد", color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.labelMedium)
                             }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { testAllConfigs() },
+                                    enabled = testingIndex == -1 && vpnStatus == "disconnected",
+                                    modifier = Modifier.weight(1f)
+                                ) { Text(if (appLanguage == "en") "Test all" else "تست همه") }
+                                Button(
+                                    onClick = { sortConfigsByPing() },
+                                    enabled = testingIndex == -1 && links.isNotEmpty(),
+                                    modifier = Modifier.weight(1f)
+                                ) { Text(if (appLanguage == "en") "Best ping first" else "بهترین پینگ اول") }
+                            }
+                            if (testingIndex != -1) {
+                                Text(
+                                    "در حال تست کانفیگ ${testingIndex + 1} از ${links.size}...",
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                )
+                            }
                             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 itemsIndexed(links) { index, link ->
                                     Card(
@@ -368,7 +452,7 @@ class MainActivity : ComponentActivity() {
                                                         else MaterialTheme.colorScheme.secondary)
                                                 }
                                             }
-                                            TextButton(onClick = {
+                                            TextButton(enabled = testingIndex == -1, onClick = {
                                                 saveLinks(links.filterIndexed { i, _ -> i != index })
                                                 configTestResults.remove(index)
                                                 message = "کانفیگ حذف شد."
