@@ -81,9 +81,9 @@ function openSocket(){
 connect.onclick=()=>{
   const c=code.value.trim();
   if(!/^[0-9]{8}$/.test(c)){status('کد باید ۸ رقم باشد.');return}
-  stop();activeCode=c;manualStop=false;reconnectAttempts=0;openSocket();
+  stop();activeCode=c;localStorage.setItem('nexa_remote_pair_code',c);manualStop=false;reconnectAttempts=0;openSocket();
 };
-disconnect.onclick=()=>{stop();status('اتصال قطع شد.')};
+disconnect.onclick=()=>{localStorage.removeItem('nexa_remote_pair_code');stop();status('اتصال قطع شد.')};
 screen.addEventListener('click',event=>{
   if(!ws||ws.readyState!==WebSocket.OPEN||deviceLocked)return;
   const r=screen.getBoundingClientRect();if(!r.width||!r.height)return;
@@ -91,5 +91,11 @@ screen.addEventListener('click',event=>{
   const y=Math.max(0,Math.min(1,(event.clientY-r.top)/r.height));
   ws.send(JSON.stringify({type:'tap',x,y}));
 });
-window.addEventListener('beforeunload',()=>{manualStop=true;if(ws)ws.close()});
+window.addEventListener('beforeunload',()=>{manualStop=true;if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}if(ws){try{ws.close(1000,'Viewer page closed')}catch{}}});
+const savedPairCode=localStorage.getItem('nexa_remote_pair_code')||'';
+if(/^[0-9]{8}$/.test(savedPairCode)){
+  code.value=savedPairCode;
+  status('کد قبلی پیدا شد؛ در حال اتصال دوباره…');
+  setTimeout(()=>connect.click(),0);
+}
 </script></body></html>
