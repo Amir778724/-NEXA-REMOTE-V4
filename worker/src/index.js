@@ -160,6 +160,20 @@ export class RoomHub {
       return;
     }
 
+    if (msg.type === "type_text") {
+      const room = a.code ? this.findRoom(a.code) : null;
+      if (!room || room.viewer !== ws || !room.host) return;
+      if (this.attachment(room.host).locked) return;
+      const value = typeof msg.text === "string" ? msg.text : "";
+      if (value.length < 1 || value.length > 256 || value.includes("\u0000")) return;
+      const now = Date.now();
+      if (a.lastTextAt && now - a.lastTextAt < 1000) return;
+      this.save(ws, { ...a, lastTextAt: now });
+      // Forward transiently only; do not persist or log the entered text.
+      this.send(room.host, { type: "type_text", text: value });
+      return;
+    }
+
     if (msg.type === "swipe") {
       const room = a.code ? this.findRoom(a.code) : null;
       if (!room || room.viewer !== ws) return;

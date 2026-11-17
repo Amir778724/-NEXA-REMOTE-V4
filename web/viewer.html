@@ -27,12 +27,13 @@ small{display:block;margin-top:14px;color:#8998ba}
 <p class="muted">برای مشاهده صفحه، کد ۸ رقمی را از برنامه‌ای که صاحب دستگاه با اجازه خودش اجرا کرده وارد کنید.</p>
 <div class="row"><input id="code" inputmode="numeric" maxlength="8" placeholder="کد ۸ رقمی" aria-label="کد اتصال"><button id="connect">اتصال</button><button id="disconnect" disabled>قطع اتصال</button><button id="refresh" disabled>تازه‌سازی تصویر</button></div>
 <div id="status" role="status">آماده اتصال</div>
+<div class="row" aria-label="ارسال متن به گوشی اصلی"><input id="remoteText" type="password" maxlength="256" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="متن یا رمز برای فیلد فعال" aria-label="متن برای ارسال" disabled><button id="sendText" disabled>ارسال متن</button></div>
 <div class="frame"><img id="screen" alt="تصویر زنده دستگاه" hidden><span id="empty" class="muted">هنوز تصویری دریافت نشده است.</span></div>
 <div id="location" aria-live="polite"></div>
 <small>برای لمس از راه دور، روی تصویر کلیک کنید. این قابلیت فقط وقتی کار می‌کند که صاحب دستگاه سرویس دسترس‌پذیری را خودش فعال کرده باشد. نشست اتصال تا ۴۸ ساعت اعتبار دارد؛ در صورت قطع موقت اینترنت، اتصال با همان کد دوباره برقرار می‌شود.</small>
 </main>
 <script>
-const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), refresh=document.querySelector('#refresh'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty'), locationEl=document.querySelector('#location');
+const code=document.querySelector('#code'), connect=document.querySelector('#connect'), disconnect=document.querySelector('#disconnect'), refresh=document.querySelector('#refresh'), statusEl=document.querySelector('#status'), screen=document.querySelector('#screen'), empty=document.querySelector('#empty'), locationEl=document.querySelector('#location'), remoteText=document.querySelector('#remoteText'), sendText=document.querySelector('#sendText');
 let ws=null, lastUrl=null, reconnectTimer=null, reconnectAttempts=0, manualStop=true, activeCode='', deviceLocked=false, lastFrameAt=0, viewerReadyAt=0, lastRefreshAt=0, activePointer=null, suppressClickUntil=0;
 function status(t){statusEl.textContent=t}
 function clearFrame(){if(lastUrl)URL.revokeObjectURL(lastUrl);lastUrl=null;screen.removeAttribute('src');screen.hidden=true;empty.hidden=false}
@@ -42,7 +43,7 @@ function stop(){
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const old=ws;ws=null;
   if(old){try{old.send(JSON.stringify({type:'stop'}));old.close()}catch{}}
-  clearFrame();connect.disabled=false;disconnect.disabled=true;refresh.disabled=true;
+  clearFrame();connect.disabled=false;disconnect.disabled=true;refresh.disabled=true;remoteText.value='';remoteText.disabled=true;sendText.disabled=true;
 }
 function scheduleReconnect(){
   if(manualStop||reconnectTimer)return;
@@ -62,11 +63,11 @@ function openSocket(){
     if(ws!==current)return;
     if(typeof e.data==='string'){
       let m;try{m=JSON.parse(e.data)}catch{return}
-      if(m.type==='viewer_ready'){reconnectAttempts=0;viewerReadyAt=Date.now();status('متصل شد؛ تصویر زنده در حال دریافت است.');disconnect.disabled=false;refresh.disabled=false}
+      if(m.type==='viewer_ready'){reconnectAttempts=0;viewerReadyAt=Date.now();status('متصل شد؛ تصویر زنده در حال دریافت است.');disconnect.disabled=false;refresh.disabled=false;remoteText.disabled=false;sendText.disabled=false}
       else if(m.type==='error'){status((m.message||'خطا در اتصال')+'؛ تلاش دوباره…');const failed=ws;ws=null;try{failed.close()}catch{}scheduleReconnect()}
-      else if(m.type==='host_disconnected'){status('گوشی اصلی موقتاً قطع شده؛ اتصال بیننده حفظ می‌شود و با برگشت گوشی اصلی خودکار ادامه می‌یابد.')}
-      else if(m.type==='device_locked'){deviceLocked=true;status('گوشی اصلی قفل است؛ اتصال برقرار است. لمس از راه دور تا باز شدن قفل غیرفعال می‌ماند.')}
-      else if(m.type==='device_unlocked'){deviceLocked=false;status('قفل گوشی اصلی باز شد؛ تصویر و کنترل در دسترس است.')}
+      else if(m.type==='host_disconnected'){remoteText.disabled=true;sendText.disabled=true;status('گوشی اصلی موقتاً قطع شده؛ اتصال بیننده حفظ می‌شود و با برگشت گوشی اصلی خودکار ادامه می‌یابد.')}
+      else if(m.type==='device_locked'){deviceLocked=true;remoteText.disabled=true;sendText.disabled=true;status('گوشی اصلی قفل است؛ ورود متن و لمس از راه دور تا باز شدن قفل غیرفعال می‌ماند.')}
+      else if(m.type==='device_unlocked'){deviceLocked=false;remoteText.disabled=false;sendText.disabled=false;status('قفل گوشی اصلی باز شد؛ تصویر و کنترل در دسترس است.')}
       else if(m.type==='host_location'){
         const lat=Number(m.latitude),lon=Number(m.longitude);
         if(Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180){
@@ -75,6 +76,7 @@ function openSocket(){
           locationEl.style.display='block';
         }
       }
+      else if(m.type==='text_input_result'){status(m.success?'درخواست ورود متن پذیرفته شد.':'ورود متن ممکن نشد؛ فیلد متنی فعال نیست یا برنامه اجازه نمی‌دهد.');}
       else if(m.type==='session_expired'){stop();status('زمان این نشست به پایان رسید.')}
       return;
     }
@@ -96,6 +98,15 @@ connect.onclick=()=>{
   stop();activeCode=c;manualStop=false;reconnectAttempts=0;openSocket();
 };
 disconnect.onclick=()=>{stop();status('اتصال قطع شد.')};
+sendText.onclick=()=>{
+  if(!ws||ws.readyState!==WebSocket.OPEN||deviceLocked)return;
+  const value=remoteText.value;
+  if(value.length===0){status('ابتدا متن را وارد کن.');return;}
+  if(value.length>256){status('حداکثر طول متن ۲۵۶ نویسه است.');return;}
+  ws.send(JSON.stringify({type:'type_text',text:value}));
+  remoteText.value='';
+  status('درخواست ورود متن ارسال شد؛ نتیجه از گوشی اصلی اعلام می‌شود.');
+};
 refresh.onclick=()=>{
   if(manualStop)return;
   if(ws&&ws.readyState===WebSocket.OPEN){

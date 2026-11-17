@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.app.KeyguardManager
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.os.Bundle
+import android.view.accessibility.AccessibilityNodeInfo
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
@@ -75,6 +77,31 @@ class RemoteAccessibilityService : AccessibilityService() {
                 .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
                 .build()
             service.dispatchGesture(gesture, null, null)
+        }
+
+        /**
+         * Inserts text only into the currently focused editable field.
+         * The text is never read back, stored, or logged.
+         */
+        fun performRemoteText(text: String): Boolean {
+            if (!sessionActive || text.isEmpty() || text.length > 256) return false
+            val service = instance ?: return false
+            if (service.getSystemService(KeyguardManager::class.java).isKeyguardLocked) return false
+            val root = service.rootInActiveWindow ?: return false
+            val focused = try {
+                root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            } finally {
+                root.recycle()
+            } ?: return false
+            return try {
+                if (!focused.isEditable || !focused.isEnabled) return false
+                val arguments = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+                }
+                focused.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+            } finally {
+                focused.recycle()
+            }
         }
 
         fun performRemoteTap(normalizedX: Double, normalizedY: Double) {
