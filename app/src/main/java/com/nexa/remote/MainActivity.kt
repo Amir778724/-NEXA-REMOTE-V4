@@ -14,7 +14,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import com.google.zxing.integration.android.IntentIntegrator
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import androidx.compose.foundation.layout.*
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -82,12 +82,6 @@ class MainActivity : ComponentActivity() {
                 importedConfigText.value = runCatching {
                     contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
                 }.getOrElse { "" }
-            }
-        }
-    private val qrScanLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                importedConfigText.value = result.data?.getStringExtra("SCAN_RESULT").orEmpty()
             }
         }
 
@@ -284,14 +278,13 @@ class MainActivity : ComponentActivity() {
                                 ) { Text(if (appLanguage == "en") "Local file" else "فایل گوشی") }
                                 OutlinedButton(
                                     onClick = {
-                                        qrScanLauncher.launch(
-                                            IntentIntegrator(this@MainActivity)
-                                                .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
-                                                .setPrompt("Scan config QR code")
-                                                .setBeepEnabled(false)
-                                                .setOrientationLocked(false)
-                                                .createScanIntent()
-                                        )
+                                        GmsBarcodeScanning.getClient(this@MainActivity).startScan()
+                                            .addOnSuccessListener { barcode ->
+                                                importedConfigText.value = barcode.rawValue.orEmpty()
+                                            }
+                                            .addOnFailureListener {
+                                                message = "خواندن QR ناموفق بود؛ دوباره امتحان کن."
+                                            }
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) { Text(if (appLanguage == "en") "QR Code" else "QR کد") }
