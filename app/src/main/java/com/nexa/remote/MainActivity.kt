@@ -1,6 +1,8 @@
 package com.nexa.remote
 
 import android.content.Intent
+import android.content.ClipboardManager
+import android.content.Context
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -12,6 +14,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import com.google.zxing.integration.android.IntentIntegrator
 import androidx.compose.foundation.layout.*
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -72,6 +75,21 @@ class MainActivity : ComponentActivity() {
             launchVpnConnectionConsent()
         }
     private var pendingXrayConfig = ""
+    private val importedConfigText = mutableStateOf("")
+    private val configFileLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                importedConfigText.value = runCatching {
+                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+                }.getOrElse { "" }
+            }
+        }
+    private val qrScanLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                importedConfigText.value = result.data?.getStringExtra("SCAN_RESULT").orEmpty()
+            }
+        }
 
     private val screenCaptureLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -159,9 +177,39 @@ class MainActivity : ComponentActivity() {
                     var showLanguageDialog by remember { mutableStateOf(false) }
 
                     fun saveLinks(values: List<String>) {
-                        links = values
-                        prefs.edit().putString("links", JSONArray(values).toString()).apply()
-                        if (selected >= values.size) selected = (values.size - 1).coerceAtLeast(0)
+                        val unique = values.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+                        links = unique
+                        prefs.edit().putString("links", JSONArray(unique).toString()).apply()
+                        if (selected >= unique.size) selected = (unique.size - 1).coerceAtLeast(0)
+                    }
+
+                    fun importConfigText(raw: String) {
+                        val supported = setOf("vless", "vmess", "ss", "trojan", "socks", "socks5", "http", "https", "wireguard", "wg", "hysteria2", "hy2")
+                        val candidates = raw.replace("\\r", "\\n")
+                            .split(Regex("[\\n\\t ]+"))
+                            .map { it.trim().trim(',', ';', '"', '\\'', '(', ')', '[', ']') }
+                            .filter { candidate ->
+                                val scheme = candidate.substringBefore("://", "").lowercase()
+                                scheme in supported && candidate.contains("://")
+                            }.distinct()
+                        if (candidates.isEmpty()) {
+                            message = "هیچ لینک کانفیگ پشتیبانی‌شده‌ای پیدا نشد."
+                            return
+                        }
+                        val before = links.size
+                        saveLinks((links + candidates).distinct())
+                        val added = links.size - before
+                        message = if (added > 0) added.toString() + " کانفیگ اضافه شد؛ " + (candidates.size - added) + " مورد تکراری بود."
+                            else "همه کانفیگ‌ها قبلاً اضافه شده بودند."
+                        newLink = ""
+                    }
+
+                    LaunchedEffect(importedConfigText.value) {
+                        val incoming = importedConfigText.value
+                        if (incoming.isNotBlank()) {
+                            importConfigText(incoming)
+                            importedConfigText.value = ""
+                        }
                     }
 
                     Column(
@@ -208,32 +256,62 @@ class MainActivity : ComponentActivity() {
                             OutlinedTextField(
                                 value = newLink,
                                 onValueChange = { newLink = it; message = "" },
-                                label = { Text(if (appLanguage == "en") "Enter VLESS link" else "لینک VLESS را وارد کن") },
-                                placeholder = { Text("vless://...") },
+                                label = { Text(if (appLanguage == "en") "Paste or enter config links" else "لینک کانفیگ را وارد کن") },
+                                placeholder = { Text("vless://  vmess://  ss://  trojan:// ...") },
                                 modifier = Modifier.fillMaxWidth().heightIn(max = 180.dp),
                                 minLines = 2,
                                 maxLines = 6,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(
-                                    onDone = { keyboardController?.hide() }
-                                ),
+                                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
                                 shape = MaterialTheme.shapes.medium
                             )
                             Button(
-                                onClick = {
-                                    val link = newLink.trim()
-                                    if (!link.startsWith("vless://", ignoreCase = true)) {
-                                        message = "لینک باید با vless:// شروع شود."
-                                    } else if (links.contains(link)) {
-                                        message = "این کانفیگ قبلاً اضافه شده است."
-                                    } else {
-                                        saveLinks(links + link)
-                                        newLink = ""
-                                        message = "کانفیگ به فهرست اضافه شد."
-                                    }
-                                },
+                                onClick = { importConfigText(newLink) },
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                            ) { Text(if (appLanguage == "en") "Add Config" else "افزودن کانفیگ") }
+                            ) { Text(if (appLanguage == "en") "Add / Import Configs" else "افزودن کانفیگ‌ها") }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val copied = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this@MainActivity)?.toString().orEmpty()
+                                        if (copied.isBlank()) message = "کلیپ‌بورد خالی است." else importConfigText(copied)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text(if (appLanguage == "en") "Clipboard" else "کلیپ‌بورد") }
+                                OutlinedButton(
+                                    onClick = { configFileLauncher.launch(arrayOf("text/*", "application/*", "*/*")) },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text(if (appLanguage == "en") "Local file" else "فایل گوشی") }
+                                OutlinedButton(
+                                    onClick = {
+                                        qrScanLauncher.launch(
+                                            IntentIntegrator(this@MainActivity)
+                                                .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
+                                                .setPrompt("Scan config QR code")
+                                                .setBeepEnabled(false)
+                                                .setOrientationLocked(false)
+                                                .createScanIntent()
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text(if (appLanguage == "en") "QR Code" else "QR کد") }
+                            }
+                            var manualMenu by remember { mutableStateOf(false) }
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                TextButton(onClick = { manualMenu = true }) {
+                                    Text(if (appLanguage == "en") "Type manually" else "ورود دستی نوع کانفیگ")
+                                }
+                                DropdownMenu(expanded = manualMenu, onDismissRequest = { manualMenu = false }) {
+                                    listOf(
+                                        "VMess" to "vmess://", "VLESS" to "vless://",
+                                        "Shadowsocks" to "ss://", "SOCKS" to "socks://",
+                                        "HTTP" to "http://", "Trojan" to "trojan://",
+                                        "WireGuard" to "wireguard://", "Hysteria2" to "hysteria2://"
+                                    ).forEach { (label, prefix) ->
+                                        DropdownMenuItem(text = { Text(label) }, onClick = { newLink = prefix; manualMenu = false })
+                                    }
+                                }
+                            }
 
                             if (message.isNotBlank()) {
                                 Text(message, color = MaterialTheme.colorScheme.secondary,
@@ -568,12 +646,29 @@ class MainActivity : ComponentActivity() {
             val parsed = response.getJSONObject("data").getJSONArray("outbounds")
             if (parsed.length() == 0) return "" to "کانفیگ معتبر پیدا نشد."
             val outbounds = JSONArray()
+            val usedTags = mutableSetOf<String>()
+            var primaryProxyTag = ""
             for (i in 0 until parsed.length()) {
                 val outbound = parsed.getJSONObject(i)
-                if (i == 0) outbound.put("tag", "proxy")
+                val originalTag = outbound.optString("tag").ifBlank { "outbound-" + (i + 1) }
+                val baseTag = if (i == 0) "proxy" else originalTag
+                var uniqueTag = baseTag
+                var suffix = 2
+                while (!usedTags.add(uniqueTag)) {
+                    uniqueTag = "$baseTag-$suffix"
+                    suffix++
+                }
+                outbound.put("tag", uniqueTag)
+                if (i == 0) primaryProxyTag = uniqueTag
                 outbounds.put(outbound)
             }
-            outbounds.put(JSONObject().put("tag", "direct").put("protocol", "freedom"))
+            var directTag = "direct"
+            var directSuffix = 2
+            while (!usedTags.add(directTag)) {
+                directTag = "direct-$directSuffix"
+                directSuffix++
+            }
+            outbounds.put(JSONObject().put("tag", directTag).put("protocol", "freedom"))
             val inbound = JSONObject()
                 .put("tag", "tun-in")
                 .put("port", 0)
@@ -588,7 +683,7 @@ class MainActivity : ComponentActivity() {
                     .put("rules", JSONArray().put(
                         JSONObject().put("type", "field")
                             .put("inboundTag", JSONArray().put("tun-in"))
-                            .put("outboundTag", "proxy")
+                            .put("outboundTag", primaryProxyTag)
                     )))
             config.toString() to ""
         } catch (e: Exception) {
