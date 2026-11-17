@@ -181,7 +181,7 @@ class MainActivity : ComponentActivity() {
                         val supported = setOf("vless", "vmess", "ss", "trojan", "socks", "socks5", "http", "https", "wireguard", "wg", "hysteria2", "hy2")
                         val candidates = raw.replace("\r", "\n")
                             .split(Regex("[\\n\\t ]+"))
-                            .map { it.trim().trim(',', ';', '"', '\\'', '(', ')', '[', ']') }
+                            .map { it.trim().trim(',', ';', '"', '(', ')', '[', ']') }
                             .filter { candidate ->
                                 val scheme = candidate.substringBefore("://", "").lowercase()
                                 scheme in supported && candidate.contains("://")
