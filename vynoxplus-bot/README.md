@@ -31,3 +31,5 @@ The Worker posts a test message to the configured channel.
 ## Telegram setup
 
 Add the bot as a channel administrator and enable **Post Messages**. The bot does not need permission to read channel messages.
+
+<!-- Cloudflare Git integration deployment trigger: 2026-11-18 -->
