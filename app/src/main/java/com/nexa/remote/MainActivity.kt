@@ -358,7 +358,7 @@ class MainActivity : ComponentActivity() {
                                     } else {
                                         testingAllConfigs = true
                                         configTestResults.clear()
-                                        message = "تست همه کانفیگ‌ها شروع شد؛ پس از پایان بهترین مورد خودکار انتخاب و متصل می‌شود."
+                                        message = "در حال سنجش زمان پاسخ کانفیگ‌ها؛ بهترین مورد پس از پایان خودکار وصل می‌شود."
                                         testAllConfigsSequentially(links) { bestIndex, bestLatency ->
                                             runOnUiThread {
                                                 testingAllConfigs = false
