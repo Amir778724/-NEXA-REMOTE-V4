@@ -410,7 +410,7 @@ class MainActivity : ComponentActivity() {
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 TextButton(
-                                                    enabled = testingIndex == -1 && vpnStatus != "connected" && vpnStatus != "connecting",
+                                                    enabled = !testingAllConfigs && testingIndex == -1 && vpnStatus != "connected" && vpnStatus != "connecting",
                                                     onClick = {
                                                         if (vpnStatus != "disconnected") {
                                                             configTestResults[index] = "برای تست، ابتدا VPN را قطع کن."
