@@ -752,6 +752,7 @@ class MainActivity : ComponentActivity() {
     private fun testConfigSpeed(link: String, callback: (String) -> Unit) {
         Thread {
             var xrayStarted = false
+            var resultText = ""
             try {
                 val converted = makeXrayConfig(link)
                 if (converted.first.isBlank()) throw IllegalStateException(converted.second)
@@ -822,12 +823,12 @@ class MainActivity : ComponentActivity() {
                     val responseMs = ((firstByteAt - startedAt) / 1_000_000L).coerceAtLeast(1)
                     val seconds = ((finishedAt - firstByteAt) / 1_000_000_000.0).coerceAtLeast(0.001)
                     val mbps = totalBytes * 8.0 / seconds / 1_000_000.0
-                    callback("پاسخ: ${responseMs}ms  |  دانلود: ${"%.2f".format(java.util.Locale.US, mbps)} Mbps")
+                    resultText = "پاسخ: ${responseMs}ms  |  دانلود: ${"%.2f".format(java.util.Locale.US, mbps)} Mbps"
                 } finally {
                     connection.disconnect()
                 }
             } catch (e: Exception) {
-                callback("خطا: ${e.message ?: "تست انجام نشد"}")
+                resultText = "خطا: ${e.message ?: "تست انجام نشد"}"
             } finally {
                 if (xrayStarted) {
                     runCatching {
@@ -835,6 +836,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            callback(resultText)
         }.start()
     }
 
