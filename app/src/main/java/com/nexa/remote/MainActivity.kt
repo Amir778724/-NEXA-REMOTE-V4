@@ -148,6 +148,7 @@ class MainActivity : ComponentActivity() {
                     var message by remember { mutableStateOf("") }
                     var testingIndex by remember { mutableIntStateOf(-1) }
                     val configTestResults = remember { mutableStateMapOf<Int, String>() }
+                    var testingAllConfigs by remember { mutableStateOf(false) }
                     var vpnStatus by remember { mutableStateOf("disconnected") }
                     var vpnError by remember { mutableStateOf("") }
                     LaunchedEffect(Unit) {
@@ -196,6 +197,33 @@ class MainActivity : ComponentActivity() {
                         message = if (added > 0) added.toString() + " کانفیگ اضافه شد؛ " + (candidates.size - added) + " مورد تکراری بود."
                             else "همه کانفیگ‌ها قبلاً اضافه شده بودند."
                         newLink = ""
+                    }
+
+                    fun testAllConfigsSequentially(
+                        configs: List<String>,
+                        onFinished: (Int, Long) -> Unit
+                    ) {
+                        var bestIndex = -1
+                        var bestLatency = Long.MAX_VALUE
+                        fun runAt(index: Int) {
+                            if (index >= configs.size) {
+                                onFinished(bestIndex, if (bestIndex >= 0) bestLatency else -1L)
+                                return
+                            }
+                            testConfigSpeed(configs[index]) { result ->
+                                runOnUiThread {
+                                    configTestResults[index] = result
+                                    val latency = Regex("پاسخ: (\\d+)ms").find(result)
+                                        ?.groupValues?.getOrNull(1)?.toLongOrNull()
+                                    if (latency != null && latency < bestLatency) {
+                                        bestLatency = latency
+                                        bestIndex = index
+                                    }
+                                    runAt(index + 1)
+                                }
+                            }
+                        }
+                        runAt(0)
                     }
 
                     LaunchedEffect(importedConfigText.value) {
@@ -320,6 +348,43 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.weight(1f))
                                 Text("${links.size} مورد", color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.labelMedium)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    if (links.isEmpty()) {
+                                        message = "اول کانفیگ اضافه کن."
+                                    } else if (vpnStatus != "disconnected") {
+                                        message = "برای تست همه کانفیگ‌ها ابتدا VPN را قطع کن."
+                                    } else {
+                                        testingAllConfigs = true
+                                        configTestResults.clear()
+                                        message = "تست همه کانفیگ‌ها شروع شد؛ پس از پایان بهترین مورد خودکار انتخاب و متصل می‌شود."
+                                        testAllConfigsSequentially(links) { bestIndex, bestLatency ->
+                                            runOnUiThread {
+                                                testingAllConfigs = false
+                                                if (bestIndex >= 0 && bestIndex in links.indices) {
+                                                    selected = bestIndex
+                                                    val bestConfig = makeXrayConfig(links[bestIndex])
+                                                    if (bestConfig.first.isNotBlank()) {
+                                                        pendingXrayConfig = bestConfig.first
+                                                        connectVpnWithLocation(pendingXrayConfig)
+                                                        vpnStatus = "connecting"
+                                                        vpnError = ""
+                                                        message = "بهترین کانفیگ انتخاب شد (${bestLatency}ms)؛ درخواست اتصال ارسال شد."
+                                                    } else {
+                                                        message = "بهترین کانفیگ آماده اتصال نشد: ${bestConfig.second}"
+                                                    }
+                                                } else {
+                                                    message = "هیچ کانفیگ سالمی پیدا نشد؛ نتیجه تست‌ها را بررسی کن."
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = !testingAllConfigs && testingIndex == -1 && vpnStatus == "disconnected" && links.isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                            ) {
+                                Text(if (testingAllConfigs) "در حال بررسی کانفیگ‌ها..." else "تست همه و اتصال به بهترین")
                             }
                             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 itemsIndexed(links) { index, link ->
