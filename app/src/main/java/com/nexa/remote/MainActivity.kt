@@ -384,7 +384,7 @@ class MainActivity : ComponentActivity() {
                                 enabled = !testingAllConfigs && testingIndex == -1 && vpnStatus == "disconnected" && links.isNotEmpty(),
                                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                             ) {
-                                Text(if (testingAllConfigs) "در حال بررسی کانفیگ‌ها..." else "تست همه و اتصال به بهترین")
+                                Text(if (testingAllConfigs) "در حال بررسی کانفیگ‌ها..." else "بررسی پینگ همه و اتصال خودکار به بهترین")
                             }
                             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 itemsIndexed(links) { index, link ->
