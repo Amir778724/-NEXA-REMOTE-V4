@@ -23,6 +23,7 @@ import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import okhttp3.OkHttpClient
@@ -226,9 +227,19 @@ class ScreenShareService : Service() {
                                 )
                             }
                         }
-                        "session_expired", "host_disconnected" -> {
+                        "session_expired" -> {
+                            // The relay explicitly ended this room; release capture resources.
                             stopCapture()
                             stopSelf()
+                        }
+                        "host_disconnected" -> {
+                            // A temporary peer disconnect must not terminate the host capture.
+                            // Keep MediaProjection alive so the relay can reconnect the session.
+                            viewerConnected = false
+                            locationRelayRunnable?.let(mainHandler::removeCallbacks)
+                            locationRelayRunnable = null
+                            lastSentLocationKey = ""
+                            updateNotification("ارتباط بیننده قطع شد؛ منتظر اتصال دوباره…")
                         }
                         "error" -> {
                             updateNotification("خطای اتصال؛ اشتراک را متوقف کنید")
@@ -361,10 +372,16 @@ class ScreenShareService : Service() {
     }
 
     private fun forwardFrame(image: Image) {
-        if (!viewerConnected || socket == null) return
-        val now = System.currentTimeMillis()
+        if (!viewerConnected) return
+        val targetSocket = socket ?: return
+        // Never spend CPU encoding a frame while older frames are still queued.
+        if (targetSocket.queueSize() >= MAX_QUEUE_BYTES) return
+
+        val now = SystemClock.elapsedRealtime()
         if (now - lastFrameAt < FRAME_INTERVAL_MS) return
         lastFrameAt = now
+
+        var bitmap: Bitmap? = null
         try {
             val plane = image.planes[0]
             val buffer = plane.buffer
@@ -372,35 +389,46 @@ class ScreenShareService : Service() {
             val height = image.height
             val pixelStride = plane.pixelStride
             val rowStride = plane.rowStride
-            val pixels = IntArray(width * height)
-            for (y in 0 until height) {
-                val rowStart = y * rowStride
-                for (x in 0 until width) {
-                    val offset = rowStart + x * pixelStride
-                    val r = buffer.get(offset).toInt() and 0xff
-                    val g = buffer.get(offset + 1).toInt() and 0xff
-                    val b = buffer.get(offset + 2).toInt() and 0xff
-                    val a = buffer.get(offset + 3).toInt() and 0xff
-                    pixels[y * width + x] = (a shl 24) or (r shl 16) or (g shl 8) or b
+
+            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            if (pixelStride == 4 && rowStride == width * 4) {
+                // Fast path: copy the contiguous RGBA plane directly into the bitmap.
+                buffer.rewind()
+                bitmap.copyPixelsFromBuffer(buffer)
+            } else {
+                // Some devices pad image rows; handle that layout safely.
+                val pixels = IntArray(width * height)
+                for (y in 0 until height) {
+                    val rowStart = y * rowStride
+                    for (x in 0 until width) {
+                        val offset = rowStart + x * pixelStride
+                        val r = buffer.get(offset).toInt() and 0xff
+                        val g = buffer.get(offset + 1).toInt() and 0xff
+                        val b = buffer.get(offset + 2).toInt() and 0xff
+                        val a = buffer.get(offset + 3).toInt() and 0xff
+                        pixels[y * width + x] = (a shl 24) or (r shl 16) or (g shl 8) or b
+                    }
                 }
-            }
-            var bitmap = Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
-            if (width > MAX_FRAME_WIDTH) {
-                val scaledHeight = (height * (MAX_FRAME_WIDTH.toFloat() / width)).toInt().coerceAtLeast(1)
-                val scaled = Bitmap.createScaledBitmap(bitmap, MAX_FRAME_WIDTH, scaledHeight, true)
                 bitmap.recycle()
-                bitmap = scaled
+                bitmap = Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
             }
-            val output = ByteArrayOutputStream()
+
+            val output = ByteArrayOutputStream(64 * 1024)
             bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, output)
-            bitmap.recycle()
             val bytes = output.toByteArray()
             output.close()
-            if (bytes.size <= MAX_FRAME_BYTES && (socket?.queueSize() ?: Long.MAX_VALUE) < MAX_QUEUE_BYTES) {
-                socket?.send(ByteString.of(*bytes))
+
+            // Drop stale work rather than building latency in the WebSocket queue.
+            if (bytes.size <= MAX_FRAME_BYTES &&
+                socket === targetSocket &&
+                targetSocket.queueSize() < MAX_QUEUE_BYTES
+            ) {
+                targetSocket.send(ByteString.of(*bytes))
             }
         } catch (_: Exception) {
             // A dropped frame is preferable to interrupting the active session.
+        } finally {
+            bitmap?.recycle()
         }
     }
 
@@ -519,10 +547,10 @@ class ScreenShareService : Service() {
         const val EXTRA_PAIR_CODE = "pair_code"
         private const val CHANNEL_ID = "nexa_screen_share"
         private const val NOTIFICATION_ID = 4101
-        private const val FRAME_INTERVAL_MS = 150L
+        private const val FRAME_INTERVAL_MS = 66L
         private const val MAX_FRAME_WIDTH = 640
         private const val JPEG_QUALITY = 42
         private const val MAX_FRAME_BYTES = 650_000
-        private const val MAX_QUEUE_BYTES = 256_000L
+        private const val MAX_QUEUE_BYTES = 128_000L
     }
 }
