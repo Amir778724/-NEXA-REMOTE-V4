@@ -226,9 +226,19 @@ class ScreenShareService : Service() {
                                 )
                             }
                         }
-                        "session_expired", "host_disconnected" -> {
+                        "session_expired" -> {
+                            // The relay explicitly ended this room; release capture resources.
                             stopCapture()
                             stopSelf()
+                        }
+                        "host_disconnected" -> {
+                            // A temporary peer disconnect must not terminate the host capture.
+                            // Keep MediaProjection alive so the relay can reconnect the session.
+                            viewerConnected = false
+                            locationRelayRunnable?.let(mainHandler::removeCallbacks)
+                            locationRelayRunnable = null
+                            lastSentLocationKey = ""
+                            updateNotification("ارتباط بیننده قطع شد؛ منتظر اتصال دوباره…")
                         }
                         "error" -> {
                             updateNotification("خطای اتصال؛ اشتراک را متوقف کنید")
