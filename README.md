@@ -55,3 +55,8 @@ GitHub Actions builds a debug APK on pushes to `main` and uploads it as an artif
 - Remote input is limited to taps and swipes; keyboard input and file transfer are not implemented.
 - Screen sharing requires the Android owner's visible system consent session to remain active. The owner can stop sharing at any time.
 - A successful APK build does not mean the Cloudflare Worker or Pages project has been deployed. Cloudflare deployment and Service Binding must be checked separately.
+
+
+## NEXA CONFIG automatic server selection
+
+The Android app can test saved proxy configurations sequentially, compare their measured response times, select the lowest-latency successful result, and start the VPN connection automatically. This measures the response time through each proxy endpoint; results depend on the current network.
